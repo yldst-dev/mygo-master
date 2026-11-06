@@ -57,15 +57,15 @@ func (a *App) header(c *ui.Context) {
 		ui.Box(c).ClipY().Children(func() {
 			ui.Text(c, fmt.Sprintf("%d left", a.tasks.Remaining())).TextColor(t.TextMuted).NoWrap().ContentTransition(rollDigits)
 		})
-		ui.Switch(c, &a.dark).Label("Dark mode").OnChange(func() { a.setDark(a.dark) })
+		toggle(c, &a.dark, "Dark mode", func() { a.setDark(a.dark) })
 	})
 }
 
 func (a *App) composer(c *ui.Context) {
 	t := c.Theme()
 	ui.Row(c).Gap(8).Children(func() {
-		input := ui.TextInput(c.Key("draft"), &a.draft).Bind(&a.input).Label("New task").Placeholder("New task").Grow(1)
-		if softButton(c, "Add").Clicked() || input.Submitted() {
+		input := ui.TextInput(c.Key("draft"), &a.draft).Bind(&a.input).Label("New task").Placeholder("New task").Height(40).Grow(1)
+		if primaryButton(c, "Add").Clicked() || input.Submitted() {
 			a.add()
 		}
 	})
@@ -91,10 +91,10 @@ func (a *App) report(err error) {
 
 func (a *App) row(c *ui.Context, task domain.Task) {
 	t := c.Theme()
-	row := ui.Row(c.Key(task.ID)).Height(40).PaddingX(8).Gap(8).Radius(8).ClipY().Transition(rowMotion)
+	row := ui.Row(c.Key(task.ID)).Height(44).PaddingX(8).Gap(8).Radius(10).ClipY().Transition(rowMotion)
 	row.Background(t.SurfaceHover.Alpha(progress(row, "hover", row.Hovered(), fadeMotion))).Children(func() {
 		done := task.Done
-		ui.Checkbox(c, &done, task.Title).Grow(1).MinWidth(0).OnChange(func() { a.report(a.tasks.Toggle(task.ID)) })
+		ui.Checkbox(c, &done, task.Title).Label(task.Title).Grow(1).MinWidth(0).FillHeight().OnChange(func() { a.report(a.tasks.Toggle(task.ID)) })
 		remove := softButton(c, "Remove").Label("Remove " + task.Title).KeepFocus().Shrink(0)
 		byKeyboard := remove.Focused()
 		remove.OnClick(func() {

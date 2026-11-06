@@ -113,6 +113,25 @@ def check_starter():
     return done.returncode == 0
 
 
+def check_example():
+    with tempfile.TemporaryDirectory() as work:
+        app = os.path.join(work, "dashboard")
+        shutil.copytree(os.path.join(SKILL, "examples", "dashboard"), app)
+        for command in (
+            ["go", "get", "github.com/egoist/mygo@latest"],
+            ["go", "mod", "tidy"],
+            ["go", "vet", "."],
+            ["go", "test", "-count=1", "-timeout", "120s", "."],
+        ):
+            done = subprocess.run(command, cwd=app, capture_output=True, text=True)
+            if done.returncode != 0:
+                print("examples/dashboard FAILED:", " ".join(command))
+                print(done.stdout + done.stderr)
+                return False
+    print("examples/dashboard ok")
+    return True
+
+
 def source_text(project):
     done = subprocess.run(
         ["go", "list", "-m", "-f", "{{.Dir}}", "github.com/egoist/mygo"], cwd=project, capture_output=True, text=True, check=True
@@ -177,10 +196,10 @@ def main():
         work = temporary.name
     built = compile_and_test(project, work)
     named = check_names(project or work)
-    started = project is not None or check_starter()
+    bundled = project is not None or all([check_starter(), check_example()])
     if temporary:
         temporary.cleanup()
-    if not (built and named and started):
+    if not (built and named and bundled):
         sys.exit(1)
 
 

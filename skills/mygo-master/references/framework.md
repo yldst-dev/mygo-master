@@ -50,7 +50,7 @@ go test -count=1 -timeout 120s ./...
 - **네이티브 UI**: `WindowOptions.Content` 에 `ui.View(a.view)` 를 준다. HTML도 웹뷰도 없고 MyGo가 GPU로 직접 그린다. macOS는 Metal, Windows는 Direct3D 11, Linux는 OpenGL이다. 시스템 위젯을 쓰는 것이 아니라 직접 그리되 접근성 트리는 제공한다.
 - **웹 페이지**: `WindowOptions.URL` 을 주면 시스템 웹뷰(WKWebView, WebKitGTK, WebView2)에 프런트엔드를 띄운다.
 
-이 스킬의 모션과 검증 방법은 네이티브 UI에서 나왔다. 요청이 분명히 웹이 아니면 네이티브 UI로 만든다.
+이 스킬은 앱 화면을 네이티브 UI로만 만든다. 웹 페이지를 띄우는 것 자체가 요청일 때만 웹 창을 쓴다. 네이티브인지 확인하는 방법과 디자인 기준은 [design.md](design.md)에 있다.
 
 ## 새 프로젝트
 
@@ -295,7 +295,7 @@ func (l *loader) load(fetch func() ([]string, error)) {
 
 ## 접근성
 
-- 글자가 없는 요소에는 `Label` 을 준다. 스크린 리더뿐 아니라 Tester의 `Click`, `Find` 도 이 이름을 쓴다.
+- 글자가 없는 요소에는 `Label` 을 준다. 스크린 리더뿐 아니라 Tester의 `Click`, `Find` 도 이 이름을 쓴다. 누를 수 있는 요소에는 글자가 있어도 준다. 그래야 `Find` 가 안쪽 글자 대신 버튼 상자를 돌려준다.
 - 직접 그린 위젯에는 `Role`, `Expanded`, `Checked`, `Value`, `Range`, `Level`, `Description` 을 준다.
 - 포커스를 받는 요소는 `FocusVisible` 일 때 링을 보여 준다. 링은 요소의 `Radius` 를 따르므로 모서리가 둥근 요소에는 반드시 준다.
 - 포커스를 옮기지 않는 소식은 `c.Announce(text)` 로 알린다.

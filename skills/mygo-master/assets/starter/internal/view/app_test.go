@@ -256,8 +256,8 @@ func TestRowHoverFadesAndGoesBack(t *testing.T) {
 func TestDarkSwitchFadesTheWindowAndTellsTheHost(t *testing.T) {
 	var told []bool
 	_, tt := start(t, twoTasks(), func(dark bool) { told = append(told, dark) })
-	light := ui.LightTheme().Background
-	dark := ui.DarkTheme().Background
+	light := lightTheme().Background
+	dark := darkTheme().Background
 	pixel := func() ui.Color {
 		p := tt.Image().RGBAAt(4, 4)
 		return ui.RGB(p.R, p.G, p.B)
@@ -290,10 +290,10 @@ func TestThemeFadeCoversEveryColorAndEndsExactly(t *testing.T) {
 	if len(covered) > want {
 		t.Errorf("the fade moves %d colors of %d", len(covered), want)
 	}
-	if got, base := fadedTheme(0), ui.LightTheme(); got.Background != base.Background {
+	if got, base := fadedTheme(0), lightTheme(); got.Background != base.Background {
 		t.Errorf("the start of the fade is %v", got.Background)
 	}
-	if got, base := fadedTheme(1), ui.DarkTheme(); got.Background != base.Background || !got.Dark {
+	if got, base := fadedTheme(1), darkTheme(); got.Background != base.Background || !got.Dark {
 		t.Errorf("the end of the fade is %v", got.Background)
 	}
 }
@@ -308,4 +308,22 @@ func TestNothingMovesWithLessMotion(t *testing.T) {
 	if tt.HasText("First") {
 		t.Errorf("the row stays while the desktop asks for less motion: %q", tt.Texts())
 	}
+}
+
+func TestEveryTargetIsLargeEnough(t *testing.T) {
+	_, tt := start(t, twoTasks(), func(bool) {})
+	if small := smallTargets(tt, 28, "Dark mode", "New task", "Add", "First", "Remove First"); len(small) > 0 {
+		t.Errorf("targets under 28 DIP: %v", small)
+	}
+}
+
+func smallTargets(tt *ui.Tester, least float32, labels ...string) []string {
+	var small []string
+	for _, label := range labels {
+		r, ok := tt.Find(label)
+		if !ok || r.W < least || r.H < least {
+			small = append(small, fmt.Sprintf("%s %.1fx%.1f", label, r.W, r.H))
+		}
+	}
+	return small
 }

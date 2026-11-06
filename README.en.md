@@ -33,18 +33,20 @@ In Claude Code, start a new session and call it with `/mygo-master`. Its descrip
 
 | Path | Contents |
 |---|---|
-| [`skills/mygo-master`](skills/mygo-master) | The skill: work order and checklist, 5 reference documents, a clean architecture starter, check scripts |
-| [`dashboard`](dashboard) | The sample dashboard app the skill's motion values and recipes came from |
+| [`skills/mygo-master`](skills/mygo-master) | The skill: work order and checklist, 6 reference documents, a clean architecture starter, the dashboard source as its design example, check scripts |
+| [`dashboard`](dashboard) | The sample dashboard app the skill's design standards, motion values and recipes came from |
 | [`docs`](docs) | Images for this page |
 
 [MyGo](https://github.com/egoist/mygo) is a framework for desktop apps in Go. With its `ui` package it draws the interface itself, without a web view. This skill tells an agent how to handle versions, structure, motion and verification when it builds or changes a MyGo app.
 
 The skill's documents are written in Korean. Agents read them without trouble; this page exists in both languages for people.
 
-## The five standards
+## The seven standards
 
 - **Latest MyGo.** Check the latest release before starting and confirm APIs against that version's source and docs. Upgrade a project that lags behind before changing features. Leave the version alone when it is pinned on purpose or when `go.mod` has a `replace`.
 - **Clean architecture.** New apps are split into four layers, `domain`, `usecase`, `adapter` and `view`, and a test fails when a dependency points the wrong way. Existing apps keep their own structure.
+- **Fully native.** App screens are drawn with `ui.View` only, with no HTML, CSS, JavaScript or web view. A web window is used only when showing a web page is the request itself.
+- **Calm and easy to use.** Like the dashboard in this repository: one accent color, generous spacing, light lines and faint shadows. Nothing you can click is smaller than 28 DIP, and a test keeps it that way.
 - **Smooth.** Things react as soon as the pointer arrives and carry on without a jump when it changes direction. Once motion ends, the app stops asking for frames.
 - **Precise.** The resting screen matches to the pixel, and values such as tooltips stay inside the chart.
 - **Thorough.** Whatever works with a pointer also works with a keyboard. Tests are checked by breaking the code on purpose, and checks that were not run are never reported as done.
@@ -90,6 +92,8 @@ go tool mygo build -skip-dmg
 
 The dashboard was built before the clean architecture rule went into the skill, so it is a single package. For the structure of a new app, see the [starter](skills/mygo-master/assets/starter). Orders and customers on screen are made-up sample data.
 
+The skill carries a copy of this source as its design example ([`skills/mygo-master/examples/dashboard`](skills/mygo-master/examples/dashboard)). Three spots are below the 28 DIP standard: the dropdown menu rows (27.3 tall), the clear button in the search field (21×21) and the order ID links in the table (17.1 tall). The skill lists them as spots not to copy.
+
 ## Install by hand
 
 ```sh
@@ -106,7 +110,7 @@ If `~/.claude/skills/mygo-master` already exists, delete it first. Copying over 
 python3 skills/mygo-master/scripts/check_snippets.py
 ```
 
-This compiles and tests the Go code in the documents against the latest MyGo, checks that every API name the documents mention exists in that version, and runs the new app script to the end. It downloads the latest MyGo, so it needs a network connection.
+This compiles and tests the Go code in the documents against the latest MyGo, checks that every API name the documents mention exists in that version, runs the new app script to the end, and tests the bundled dashboard copy on that version. It downloads the latest MyGo, so it needs a network connection.
 
 ## What was checked
 
