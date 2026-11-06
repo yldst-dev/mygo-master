@@ -1,0 +1,6 @@
+{
+  "name": "Monthly Sales",
+  "identifier": "com.example.monthlysales",
+  "version": "0.1.0",
+  "out": "build"
+}

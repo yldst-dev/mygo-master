@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: new-notes-app
+expected_outcome: |
+  A new native MyGo app in notes-app on the latest MyGo release, built in clean architecture, with
+  smooth list motion, layered tests, and an honest report of what was and was not verified.
