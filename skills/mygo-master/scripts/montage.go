@@ -25,6 +25,10 @@ func main() {
 		return v
 	}
 	x, y, w, h, columns := number(2), number(3), number(4), number(5), number(6)
+	if w <= 0 || h <= 0 || columns <= 0 {
+		fmt.Fprintln(os.Stderr, "w, h and columns must be positive")
+		os.Exit(2)
+	}
 	files := os.Args[7:]
 	rows := (len(files) + columns - 1) / columns
 	canvas := image.NewRGBA(image.Rect(0, 0, columns*(w+6)-6, rows*(h+6)-6))

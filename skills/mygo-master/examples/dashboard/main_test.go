@@ -1,7 +1,6 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -110,18 +109,25 @@ func TestDarkModeToggle(t *testing.T) {
 }
 
 func TestCustomerSpendExcludesCancelledOrders(t *testing.T) {
+	found := false
 	for _, s := range summarizeCustomers(orders) {
-		if s.name == "Olivia Carter" && (s.orders != 2 || s.spent != 129) {
+		if s.name != "Olivia Carter" {
+			continue
+		}
+		found = true
+		if s.orders != 2 || s.spent != 129 {
 			t.Errorf("Olivia Carter: %d orders, %.2f spent", s.orders, s.spent)
 		}
+	}
+	if !found {
+		t.Fatal("no summary for Olivia Carter")
 	}
 }
 
 func pillTop(tt *ui.Tester) int {
 	img := tt.Image()
 	for y := 0; y < img.Bounds().Dy(); y++ {
-		c := img.RGBAAt(20, y)
-		if c.R == lightPalette.navActive.R && c.G == lightPalette.navActive.G && c.B == lightPalette.navActive.B {
+		if same(pixel(tt, 20, float32(y)), lightPalette.navActive) {
 			return y
 		}
 	}
@@ -190,8 +196,7 @@ func highlighted(tt *ui.Tester, label string) bool {
 	if !ok {
 		return false
 	}
-	c := tt.Image().RGBAAt(int(r.X)+3, int(r.Y+r.H/2))
-	return c.R == lightPalette.accent.R && c.G == lightPalette.accent.G && c.B == lightPalette.accent.B
+	return same(pixel(tt, r.X+3, r.Y+r.H/2), lightPalette.accent)
 }
 
 func TestDropdownHighlightsOneRow(t *testing.T) {
@@ -266,31 +271,6 @@ func TestShadeUpToStaysInTheData(t *testing.T) {
 	}
 }
 
-func TestPaletteFadeCoversEveryColor(t *testing.T) {
-	var count func(reflect.Type) int
-	count = func(typ reflect.Type) int {
-		switch {
-		case typ == reflect.TypeOf(ui.Color{}):
-			return 1
-		case typ.Kind() == reflect.Array:
-			return typ.Len() * count(typ.Elem())
-		case typ.Kind() == reflect.Struct:
-			total := 0
-			for i := range typ.NumField() {
-				total += count(typ.Field(i).Type)
-			}
-			return total
-		}
-		return 0
-	}
-	if want, got := count(reflect.TypeOf(palette{})), len(lightPalette.channels()); want != got {
-		t.Errorf("the palette has %d colors, the fade moves %d", want, got)
-	}
-	if fadedPalette(0) != &lightPalette || fadedPalette(1) != &darkPalette {
-		t.Error("the ends of the fade are not the palettes themselves")
-	}
-}
-
 func TestThemeFadeMovesTogether(t *testing.T) {
 	a := testApp()
 	tt := ui.NewTester(a.view, 1440, 900)
@@ -315,7 +295,7 @@ func TestMonthPillSlidesUnderTheLabels(t *testing.T) {
 	a := testApp()
 	tt := ui.NewTester(a.view, 1440, 900)
 	r, _ := tt.Find("Mar")
-	y := r.Y - 4
+	y := r.Y + 3
 	blueAt := func(label string) bool {
 		l, _ := tt.Find(label)
 		return same(pixel(tt, l.X+l.W/2, y), lightPalette.accent)
@@ -423,7 +403,7 @@ func TestLessMotionJumpsToTheEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, _ := tt.Find("Mar")
-	if !same(pixel(tt, r.X+r.W/2, r.Y-4), lightPalette.accent) {
+	if !same(pixel(tt, r.X+r.W/2, r.Y+3), lightPalette.accent) {
 		t.Error("the month pill slides while the desktop asks for less motion")
 	}
 	if err := tt.Click("Dark mode"); err != nil {
@@ -628,6 +608,64 @@ func TestChartTipStaysInsideItsChart(t *testing.T) {
 		}
 		if right-left <= box.W && left < box.X-1 {
 			t.Errorf("%q starts at %v, before %s at %v", tip.text, left, tip.label, box.X)
+		}
+	}
+}
+
+func TestEveryTargetIsLargeEnough(t *testing.T) {
+	menuRows := []string{"#ORD-10051  Completed", "#ORD-10050  Processing", "#ORD-10049  Completed"}
+	for _, state := range []struct {
+		name   string
+		act    func(*ui.Tester) error
+		labels []string
+	}{
+		{"at rest", func(*ui.Tester) error { return nil }, []string{
+			"Analytics", "Orders", "Customers", "Settings",
+			"Notifications", "Dark mode", "Account", "Account menu", "View All",
+			"Jan", "Feb", "Mar", "Apr", "May", "Jun", "#ORD-10051",
+		}},
+		{"alerts open", func(tt *ui.Tester) error { return tt.Click("Notifications") }, menuRows},
+		{"account open", func(tt *ui.Tester) error { return tt.Click("Account") }, []string{"Quit"}},
+		{"search typed", func(tt *ui.Tester) error {
+			if err := tt.Click("Search"); err != nil {
+				return err
+			}
+			tt.Type("ORD")
+			return nil
+		}, []string{"Clear search"}},
+	} {
+		tt := ui.NewTester(testApp().view, 1440, 900)
+		tt.Advance(time.Second)
+		if err := state.act(tt); err != nil {
+			t.Fatal(err)
+		}
+		tt.Advance(time.Second)
+		if small := smallTargets(tt, 28, state.labels...); len(small) > 0 {
+			t.Errorf("%s: targets under 28 DIP: %v", state.name, small)
+		}
+	}
+}
+
+func TestTablesKeepTheirNameAndTellWhenNothingMatches(t *testing.T) {
+	for _, shown := range []struct {
+		page  page
+		query string
+		name  string
+	}{
+		{pageOrders, "", "Orders"},
+		{pageOrders, "zzz", "Orders"},
+		{pageCustomers, "zzz", "Customers"},
+		{pageAnalytics, "", "Monthly breakdown"},
+	} {
+		a := testApp()
+		a.page, a.query = shown.page, shown.query
+		tt := ui.NewTester(a.view, 1440, 900)
+		tt.Advance(time.Second)
+		if _, ok := tt.AccessByRole(ui.RoleTable, shown.name); !ok {
+			t.Errorf("page %d with %q has no table named %q", shown.page, shown.query, shown.name)
+		}
+		if shown.query != "" && !tt.HasText("Nothing matches your search.") {
+			t.Errorf("page %d with %q does not say that nothing matches: %q", shown.page, shown.query, tt.Texts())
 		}
 	}
 }

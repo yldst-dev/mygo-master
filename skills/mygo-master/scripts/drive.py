@@ -17,11 +17,12 @@ class Client:
     def __init__(self, path, wait=30):
         deadline = time.monotonic() + wait
         while True:
+            self.sock = socket.socket(socket.AF_UNIX)
             try:
-                self.sock = socket.socket(socket.AF_UNIX)
                 self.sock.connect(path)
                 break
             except OSError:
+                self.sock.close()
                 if time.monotonic() > deadline:
                     raise
                 time.sleep(0.2)
@@ -43,7 +44,10 @@ class Client:
             message["params"] = params
         self.stream.write(json.dumps(message).encode() + b"\n")
         self.stream.flush()
-        reply = json.loads(self.stream.readline())
+        line = self.stream.readline()
+        if not line:
+            raise ConnectionError(f"{method}: the app closed the connection")
+        reply = json.loads(line)
         if "error" in reply:
             raise RuntimeError(f"{method}: {reply['error']}")
         return reply["result"]

@@ -1,18 +1,18 @@
 # MyGo 사용법
 
-MyGo(`github.com/egoist/mygo`)는 Go로 데스크톱 앱을 만드는 프레임워크다. cgo 없이 어느 컴퓨터에서나 모든 플랫폼용으로 빌드하고, 결과는 Go 실행 파일 하나다. 이 문서는 v0.7.4 기준이다.
+MyGo(`github.com/egoist/mygo`)는 Go로 데스크톱 앱을 만드는 프레임워크다. cgo 없이 어느 컴퓨터에서나 모든 플랫폼용으로 빌드하고, 결과는 Go 실행 파일 하나다. 이 문서는 v0.9.1 기준이다.
 
 목차: [버전과 문서 찾기](#버전과-문서-찾기) · [창의 두 종류](#창의-두-종류) · [새 프로젝트](#새-프로젝트) · [앱 골격](#앱-골격) · [뷰 규칙](#뷰-규칙) · [입력과 동작](#입력과-동작) · [레이아웃](#레이아웃) · [스타일과 테마](#스타일과-테마) · [위젯과 베이스](#위젯과-베이스) · [오버레이와 포커스](#오버레이와-포커스) · [차트](#차트) · [아이콘](#아이콘) · [창과 타이틀바](#창과-타이틀바) · [다른 고루틴](#다른-고루틴) · [접근성](#접근성) · [웹 창](#웹-창) · [빌드와 배포](#빌드와-배포) · [문서 지도](#문서-지도)
 
 ## 버전과 문서 찾기
 
-요청자의 기본 지시다. 항상 최신 릴리스의 MyGo로 짠다. MyGo는 며칠 간격으로 새 버전이 나오는 0.x 프레임워크라 기억 속 API는 금방 낡는다. 실제로 v0.6.3에서 v0.7.4까지 9일이 걸렸다.
+요청자의 기본 지시다. 항상 최신 릴리스의 MyGo로 짠다. MyGo는 며칠 간격으로 새 버전이 나오는 0.x 프레임워크라 기억 속 API는 금방 낡는다. 실제로 v0.6.3에서 v0.7.4까지 9일, v0.7.4에서 v0.9.1까지 14일이 걸렸다.
 
 ```sh
 go list -m -json github.com/egoist/mygo@latest
 grep egoist/mygo go.mod
 gh release list -R egoist/mygo --limit 5
-gh release view v0.7.4 -R egoist/mygo
+gh release view -R egoist/mygo
 ```
 
 첫 줄의 `Version` 이 최신이고 `Dir` 이 그 버전의 소스 경로다. 그 아래 `docs/` 에 전체 문서가, `examples/` 에 실행 가능한 예제가, `ui/doc.go` 에 뷰 모델 설명이 있다. 릴리스 노트는 내 프로젝트 버전보다 새로운 것을 모두 읽는다. API 하나를 확인할 때는 이렇게 한다.
@@ -24,7 +24,7 @@ go doc -all github.com/egoist/mygo/ui.Tester | grep '^func'
 
 - **최신은 태그가 붙은 릴리스다.** GitHub `main` 브랜치와 웹사이트 문서에는 아직 릴리스되지 않은 기능이 있을 수 있다. 소스와 문서는 모듈 캐시의 그 버전에서 읽는다.
 - **직접 짜기 전에 찾아본다.** 새 버전에 필요한 기능이 들어왔을 수 있다. 이 스킬에서 내장 위젯에 움직임을 넣을 자리가 없다고 적은 곳도 해당 버전에서 다시 확인한다.
-- **이 스킬과 소스가 다르면 소스를 따른다.** 최신 릴리스가 v0.7.4보다 새로우면 `python3 scripts/check_snippets.py` 로 레시피가 아직 도는지 먼저 확인하고, 깨진 곳은 새 API로 고쳐 쓴 뒤 스킬도 고치자고 보고한다.
+- **이 스킬과 소스가 다르면 소스를 따른다.** 최신 릴리스가 v0.9.1보다 새로우면 `python3 $SKILL/scripts/check_snippets.py` 로 레시피가 아직 도는지 먼저 확인하고, 깨진 곳은 새 API로 고쳐 쓴 뒤 스킬도 고치자고 보고한다.
 
 ### 기존 프로젝트를 최신으로 올리기
 
@@ -43,7 +43,7 @@ go test -count=1 -timeout 120s ./...
 
 `migrate-ui` 는 처음에 미리 보기만 한다. 결과를 읽고 적용한다. 파일이 하나도 나오지 않으면 최신 형태라는 뜻이므로 평소 정적 검사에도 넣는다. `0.x` 에서는 작은 버전 번호가 바뀌어도 호환이 깨질 수 있으므로 `docs/ui/migration.md` 와 릴리스 노트를 읽는다. 올린 뒤 테스트가 깨지면 고치되, 단순 수정을 넘어 작업 범위를 크게 벗어나면 멈추고 보고한다. 쉬는 화면도 비교한다.
 
-프로젝트의 `.agents/skills/mygo-maintenance/SKILL.md` 는 `mygo init` 과 `install-skills` 가 넣어 주는 공식 지침이므로 있으면 함께 따른다.
+프로젝트의 `.agents/skills/mygo-maintenance/SKILL.md` 는 `mygo init` 과 `install-skills` 가 넣어 주는 공식 지침이므로 있으면 함께 따른다. 다만 `Changed` 와 `Submitted` 가 다음 빌드에 보인다는 줄은 소스 문서(`ui/doc.go`, `docs/ui/views.md`)의 "생성자가 돌아올 때 값이 바뀌고 `Changed` 는 이번 빌드에서 바뀐 것을 알린다"와 다르게 읽힌다. 다르면 소스 문서를 따른다.
 
 ## 창의 두 종류
 
@@ -62,7 +62,7 @@ cd my-app
 go tool mygo dev
 ```
 
-`--name` 은 영문으로 쓴다. 한글 이름은 macOS의 서명 단계에서 빌드가 실패한다. 창 제목과 화면 글자는 한글로 써도 된다. 폴더는 비어 있거나 없어야 한다. `.git` 만 있어도 `mygo init` 이 거부하므로 저장소 안에서는 하위 폴더에 만든다. `go.mod` 가 요구하는 Go 버전은 `GOTOOLCHAIN=auto` 면 Go가 알아서 내려받는다. 네이티브 UI는 Bun이 필요 없다.
+카드, 메뉴, 표, 세그먼트 같은 대시보드의 부품까지 받으려면 `--kit dashboard` 를 붙인다([design.md](design.md#코드로-가져다-쓰기)). `--name` 은 영문으로 쓴다. 한글 이름은 macOS의 서명 단계에서 빌드가 실패한다. 창 제목과 화면 글자는 한글로 써도 된다. 폴더는 비어 있거나 없어야 한다. `.git` 만 있어도 `mygo init` 이 거부하므로 저장소 안에서는 하위 폴더에 만든다. `go.mod` 가 요구하는 Go 버전은 `GOTOOLCHAIN=auto` 면 Go가 알아서 내려받는다. 네이티브 UI는 Bun이 필요 없다.
 
 ```text
 my-app/
@@ -76,7 +76,8 @@ my-app/
 ├── go.mod                   MyGo와 CLI 버전을 고정
 ├── mygo.json                앱 이름, 식별자, 버전
 ├── resources/icon.png
-└── .agents/skills/mygo-maintenance/
+├── .gitignore
+└── .agents/skills/          mygo-maintenance, mygo-native-modules
 ```
 
 층의 규칙은 [architecture.md](architecture.md)에 있다. 만들어진 할 일 예제는 구조를 보여 주는 용도이므로 실제 도메인으로 바꾸고 남기지 않는다.
@@ -159,7 +160,7 @@ func TestCounterClicksAndTheme(t *testing.T) {
 - `ui.Element` 는 그 빌드 패스에서만 유효하다. 앱 상태나 고루틴에 저장하지 않는다. 오래 남겨야 하면 `ui.Handle` 을 쓴다. `go tool mygo vet .` 이 이 실수를 찾아 준다.
 - `*ui.Context` 는 창마다 하나로 고정이다. `Children` 안에서는 현재 부모만 바뀐다. 상태에 넣지 말고 도우미에 넘긴다. 사이 시간에 쓸 콜백은 `c.Services()` 를 잡아 둔다.
 - 요소의 상태(포커스, 스크롤, 애니메이션)는 형제 사이의 순서나 `Key` 를 따른다. 조건부로 생기는 형제나 순서가 바뀌는 목록에는 키를 준다.
-- 키는 생성자에 넘긴다. `ui.Button(c.Key(id), "Save")`, `ui.Row(c.Key(id))` 처럼 쓴다. `ui.Row(c).Key(id)` 는 v0.7.4의 `migrate-ui` 가 이 형태로 바꾸는 예전 형태다. `c.Key` 는 다음 요소 하나에만 걸리고, 소비되지 않으면 그 다음 요소로 넘어간다.
+- 키는 생성자에 넘긴다. `ui.Button(c.Key(id), "Save")`, `ui.Row(c.Key(id))` 처럼 쓴다. `ui.Row(c).Key(id)` 는 v0.9.1의 `migrate-ui` 가 이 형태로 바꾸는 예전 형태다. `c.Key` 는 다음 요소 하나에만 걸리고, 소비되지 않으면 그 다음 요소로 넘어간다.
 - 같은 부모 아래 같은 키가 둘이면 상태를 공유한다. 앱에서는 로그만 남고 Tester에서는 패닉이 난다.
 - 요소마다 값을 기억하려면 `ui.Local(e, "key", init)` 을 쓴다.
 - `Draw` 는 칠하기만 한다. 여러 번 불릴 수 있고 빌드보다 늦게 불린다. 상태를 바꾸지 않는다.
@@ -185,7 +186,7 @@ CSS flexbox와 거의 같다. 단위는 DIP이다.
 - 정렬: `Justify`(`ui.Start`, `ui.Center`, `ui.End`, `ui.SpaceBetween`), `AlignItems`, `AlignSelf`, `Center`, `Wrap`.
 - 위치: `Absolute` + `Top`, `Right`, `Bottom`, `Left`(테두리 안쪽에서 잰다), `Attach(at, self)`, 그리고 다른 요소에 붙이는 `AttachTo(target, at, self)`.
 - 잘라내기와 숨기기: `Clip`, `ClipX`, `ClipY`, `Invisible`(자리 유지), `Hidden(true)`(자리도 없앰, 내부 상태 유지).
-- 칠하는 순서: 배경, `Draw`, 흐름 안의 자식, `Absolute` 자식, `DrawOver`. z-index는 없다. 위에 올릴 것은 나중에 만들거나 `Absolute` 로 만든다.
+- 칠하는 순서: 배경, `Draw`, 흐름 안의 자식, `Absolute` 자식, `DrawOver`. 형제끼리의 순서는 `ZIndex` 로 바꾼다(v0.8.0부터). 나중에 만든 형제에 `ZIndex(-1)` 을 주면 앞에 만든 형제 아래에 칠해진다(Tester의 겹친 픽셀로 확인했다).
 - 창 폭에 따라 바꾸려면 `width, _ := c.Size()` 로 분기한다. 최소 창 크기에서 글자가 겹치지 않는지 반드시 확인한다.
 - 큰 데이터는 `ui.List`(보이는 행만 빌드)를 쓴다.
 - 행 안의 긴 글자가 옆 요소를 밀어내면 글자 쪽에 `MinWidth(0)` 을 준다. flexbox처럼 내용 크기 아래로 줄지 않는 것이 기본이다.
@@ -219,7 +220,7 @@ CSS flexbox와 거의 같다. 단위는 DIP이다.
 | `ui.TextInputBase`, `ui.TextAreaBase` | 꾸밈 없는 입력칸 |
 | `ui.SliderBase`, `ui.RadioBase`, `ui.CollapsibleBase` | 그 외 |
 
-내장 위젯에는 움직임을 넣을 자리가 없는 경우가 있다. `ui.PopoverMenuButton` 의 패널, `ui.SearchField` 의 지우기 버튼이 그렇다. 베이스로 다시 짤 때 잃는 것(검색 필드 역할, 입력 중 첫 글자 찾기 등)을 확인하고 보고한다.
+`ui.SearchField` 의 지우기 버튼에는 움직임을 넣을 자리가 없다. `ui.PopoverMenuButton` 의 패널은 `ui.PopoverMenuButtonOptions` 의 `Panel` 에 `Transition` 을 걸면 등장과 퇴장이 재생된다(v0.9.0부터, Tester로 확인했다). 줄마다 모양을 정하려면 `MenuBase` 로 짠다. 베이스로 다시 짤 때 잃는 것(검색 필드 역할, 입력 중 첫 글자 찾기 등)을 확인하고 보고한다.
 
 표는 머리글과 행 모양까지 디자인에 맞추려면 `Row` 로 짜고 `ui.RoleTable`, `ui.RoleRow`, `ui.RoleColumnHeader`, `ui.RoleCell` 을 붙인다. 행이 많으면 `ui.Table` 을 쓴다.
 
@@ -252,7 +253,7 @@ func barChart(c *ui.Context, labels []string, values []float64) {
 		})
 		for i, v := range values {
 			chart.Rect(c, x.Band(i), y.Span(0, v)).Radius(4).Background(t.Accent).
-				Transition(ui.ElementTransition{Animation: &pillMotion})
+				Transition(ui.ElementTransition{Position: true, Size: true, Animation: &pillMotion})
 		}
 	}).Label("Sales by month").Height(200).Gap(6)
 }

@@ -31,11 +31,11 @@
 
 ```sh
 go test -count=1 ./...
-OVERLAY=$(python3 $SKILL/scripts/overlay.py internal/view $WORK/rest $SKILL/assets/film_test.go $WORK/rest_test.go)
-REST_DIR=$WORK/rest/base go test -overlay $OVERLAY -run '^TestRestShots$' -count=1 ./internal/view
+REST_OVERLAY=$(python3 $SKILL/scripts/overlay.py internal/view $WORK/rest $SKILL/assets/film_test.go $WORK/rest_test.go)
+REST_DIR=$WORK/rest/base go test -overlay $REST_OVERLAY -run '^TestRestShots$' -count=1 ./internal/view
 ```
 
-첫 번째 인자는 테스트를 넣을 패키지 폴더다. 클린 아키텍처 앱은 `internal/view`, 평평한 앱은 `.` 이다. 패키지 이름은 스크립트가 맞춰 준다. `rest_test.go` 는 프로젝트마다 쓴다. 모든 페이지를 라이트와 다크, 기본 크기와 최소 크기로 찍는다.
+첫 번째 인자는 테스트를 넣을 패키지 폴더다. 클린 아키텍처 앱은 `internal/view`, 평평한 앱은 `.` 이다. 패키지 이름은 스크립트가 맞춰 준다. `rest_test.go` 는 프로젝트마다 쓴다. 모든 페이지를 라이트와 다크, 기본 크기와 최소 크기로 찍는다. 아래 예시는 대시보드의 `newApp` 과 `a.view` 를 쓰는 평평한 앱 기준이다. 클린 아키텍처 앱은 `internal/view` 의 `New(...)` 와 `View` 로 바꿔 쓴다.
 
 ```go test
 func TestRestShots(t *testing.T) {
@@ -71,7 +71,7 @@ CGO_ENABLED=0 go test -count=1 -timeout 120s ./...
 
 - 찾기: `tt.Find`, `tt.HasText`, `tt.Texts`, `tt.Focused`. 글자가 없는 요소는 `Label` 로 찾는다.
 - 행동: `tt.Click`, `tt.Move`, `tt.Press`, `tt.Release`, `tt.Key`, `tt.Type`, `tt.Scroll`, `tt.Wheel`.
-- 환경: `tt.SetSize`, `tt.SetScale`, `tt.SetDark`, `tt.SetPreferences`, `tt.SetFocused`.
+- 환경: `tt.SetSize`, `tt.SetScale`, `tt.SetDark`, `tt.SetPreferences`, `tt.SetFocused`, `tt.SetWindowActive`.
 - 픽셀: `tt.Image` 의 `RGBAAt`. 기본 배율 1에서는 DIP와 픽셀 좌표가 같다.
 - 입력과 `tt.Frame` 은 뷰가 요청한 프레임을 최대 20개 돌린다. 값을 읽기 전에 `tt.Advance(time.Second)` 로 끝까지 보낸다.
 - 포즈 프레임은 칠하기만 하므로 `tt.Find` 의 값이 갱신되지 않는다. 포즈 결과는 픽셀로 비교하거나 `tt.Frame` 뒤에 읽는다.
@@ -142,8 +142,8 @@ func TestSideNavJumpsWithLessMotion(t *testing.T) {
 
 ```json
 [
-  {"file": "pages.go", "old": "}).IgnoreInput(true).Transition(markMotion)", "new": "}).Transition(markMotion)", "test": "TestChartTipLetsThePointerThrough"},
-  {"file": "pages.go", "old": "min(max(x, reach), 1-reach)", "new": "min(x, 1-reach)", "test": "TestChartTipStaysInsideItsChart"}
+  {"file": "components.go", "old": "}).IgnoreInput(true).Transition(markMotion)", "new": "}).Transition(markMotion)", "test": "TestChartTipLetsThePointerThrough"},
+  {"file": "components.go", "old": "min(max(x, reach), 1-reach)", "new": "min(x, 1-reach)", "test": "TestChartTipStaysInsideItsChart"}
 ]
 ```
 
@@ -153,7 +153,7 @@ python3 $SKILL/scripts/mutate.py . $WORK/mutations.json
 
 `caught` 면 테스트가 잡은 것이고, `MISSED` 면 그 테스트에 힘이 없는 것이니 테스트를 고친다. `BROKEN` 은 변이가 컴파일되지 않거나 테스트 이름이 틀린 경우라 아무것도 증명하지 못한다. 변이는 저장소를 건드리지 않는다. 테스트가 고친 파일과 다른 패키지에 있으면 `"package": "internal/view"` 를 더한다. `go:embed` 나 `os.ReadFile` 로 소스를 직접 읽는 테스트는 `-overlay` 를 보지 못하므로 임시 복사본을 실제로 고쳐 확인한다.
 
-`ElementTransition` 에서 `Position: true` 만 지우면 셋 다 꺼진 상태가 되어 오히려 전부 애니메이션된다. 이런 변이는 `Colors: true` 로 바꿔야 의미가 있다.
+`ElementTransition` 에서 `Position: true` 만 지우면 플래그가 하나도 없는 상태가 되어 위치, 크기, 색, 그림자가 전부 애니메이션된다. 이런 변이는 `Colors: true` 로 바꿔야 의미가 있다.
 
 ## 필름스트립
 
@@ -181,8 +181,8 @@ func TestFilmSoftButton(t *testing.T) {
 ```
 
 ```sh
-OVERLAY=$(python3 $SKILL/scripts/overlay.py internal/view $WORK/film $SKILL/assets/film_test.go $WORK/scenes_test.go)
-FILM_DIR=$WORK/film/out go test -overlay $OVERLAY -run '^TestFilm' -count=1 ./internal/view
+FILM_OVERLAY=$(python3 $SKILL/scripts/overlay.py internal/view $WORK/film $SKILL/assets/film_test.go $WORK/scenes_test.go)
+FILM_DIR=$WORK/film/out go test -overlay $FILM_OVERLAY -run '^TestFilm' -count=1 ./internal/view
 ```
 
 저장한 PNG를 Read 도구로 연다. 등장, 이동, 퇴장, 중간에 방향이 바뀌는 경우를 각각 찍고, 최소 창 크기와 다크 모드도 찍는다. 볼 것은 이렇다.
@@ -199,7 +199,7 @@ FILM_DIR=$WORK/film/out go test -overlay $OVERLAY -run '^TestFilm' -count=1 ./in
 ## 쉬는 화면 비교
 
 ```sh
-REST_DIR=$WORK/rest/now go test -overlay $OVERLAY -run '^TestRestShots$' -count=1 ./internal/view
+REST_DIR=$WORK/rest/now go test -overlay $REST_OVERLAY -run '^TestRestShots$' -count=1 ./internal/view
 go run $SKILL/scripts/pixdiff.go $WORK/rest/base $WORK/rest/now
 ```
 
@@ -309,11 +309,11 @@ open build/darwin-arm64/Dashboard.app
 |---|---|
 | 요소 상태 | 쉬는 상태, 호버, 누름, 키보드 포커스 링, 선택, 열림, 비활성 |
 | 시간 | 등장, 퇴장, 이동, 중간에 방향 전환, 빠르게 드나들기, 더블클릭, 끝난 뒤 프레임 요청 없음 |
-| 환경 | 라이트, 다크, 기본 크기, 최소 크기, 창 크기 변경, 배율 1과 2, 줄인 움직임, 창 포커스 없음 |
+| 환경 | 라이트, 다크, 기본 크기, 최소 크기, 창 크기 변경, 배율 1과 2, 줄인 움직임, 창 포커스 없음(`tt.SetFocused(false)`), 비활성 창(`tt.SetWindowActive(false)`, 내장 위젯의 강조색이 회색이 되는지) |
 | 겹침 | 포인터가 요소 아래로 들어옴, 지운 뒤 다음 요소가 포인터 아래로 옴, 메뉴에 가려짐, 말풍선이 카드 밖으로 나감, 이웃 글자 가림 |
 | 데이터 | 첫 값, 마지막 값, 가장 긴 글자, 끊을 곳 없는 글자, 빈 데이터, 큰 수, 끝까지 스크롤한 상태에서 삭제, 깨진 저장 파일 |
 | 입력 | 포인터, 키보드, 포커스를 가진 요소가 사라질 때, 보조 기술 역할과 이름, 누를 곳 28×28 이상 |
-| 한글 | 입력칸이 있으면 `tt.Compose` 로 조합 상태를 확인한다. 조합 중 Enter는 Tester로 증명되지 않으므로 Enter로 제출하는 칸은 실제 입력기로 확인하거나, 못 했다고 적는다 |
+| 한글 | 입력칸이 있으면 `tt.Compose` 로 조합 상태를 확인한다. 조합 중 Enter는 Tester로 증명되지 않는다. v0.9.1의 Tester는 조합 중인 키를 막고, 실제 macOS 두벌식은 v0.8.3부터 첫 Enter에 제출한다. Enter로 제출하는 칸은 실제 입력기로 확인하거나, 못 했다고 적는다 |
 
 ## 보고
 

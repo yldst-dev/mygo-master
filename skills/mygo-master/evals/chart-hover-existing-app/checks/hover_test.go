@@ -31,28 +31,27 @@ func startChart(t *testing.T) (*ui.Tester, ui.Rect) {
 	return tt, r
 }
 
-func sweepTo(tt *ui.Tester, r ui.Rect, value string) (float32, float32, bool) {
+func sweepTo(tt *ui.Tester, r ui.Rect, value string) bool {
 	y := r.Y + r.H*0.75
 	for f := float32(0.02); f < 1; f += 0.02 {
-		x := r.X + r.W*f
-		tt.Move(x, y)
+		tt.Move(r.X+r.W*f, y)
 		if shows(tt, value) {
-			return x, y, true
+			return true
 		}
 	}
-	return 0, 0, false
+	return false
 }
 
 func TestTipShowsAtOnce(t *testing.T) {
 	tt, r := startChart(t)
-	if _, _, ok := sweepTo(tt, r, marchNorth); !ok {
+	if !sweepTo(tt, r, marchNorth) {
 		t.Errorf("no value shows without waiting: %q", tt.Texts())
 	}
 }
 
 func TestTipDoesNotFlickerUnderThePointer(t *testing.T) {
 	tt, r := startChart(t)
-	if _, _, ok := sweepTo(tt, r, marchNorth); !ok {
+	if !sweepTo(tt, r, marchNorth) {
 		t.Fatal("no tip")
 	}
 	tt.Advance(time.Second)
@@ -82,7 +81,7 @@ func TestTipDoesNotFlickerUnderThePointer(t *testing.T) {
 
 func TestRestsUnderThePointerAndAfterLeaving(t *testing.T) {
 	tt, r := startChart(t)
-	if _, _, ok := sweepTo(tt, r, marchNorth); !ok {
+	if !sweepTo(tt, r, marchNorth) {
 		t.Fatal("no tip")
 	}
 	tt.Advance(time.Second)
@@ -102,7 +101,7 @@ func TestRestsUnderThePointerAndAfterLeaving(t *testing.T) {
 func TestTipStaysInsideTheChartAtBothEnds(t *testing.T) {
 	for _, value := range []string{"42", "83"} {
 		tt, r := startChart(t)
-		if _, _, ok := sweepTo(tt, r, value); !ok {
+		if !sweepTo(tt, r, value) {
 			t.Errorf("no tip for %s", value)
 			continue
 		}
@@ -147,7 +146,7 @@ func TestKeyboardWalksTheChartAndLeavesNoTip(t *testing.T) {
 func TestTipComesInGradually(t *testing.T) {
 	tt, r := startChart(t)
 	tt.Advance(time.Second)
-	if _, _, ok := sweepTo(tt, r, marchNorth); !ok {
+	if !sweepTo(tt, r, marchNorth) {
 		t.Fatal("no tip")
 	}
 	moving := tt.FramePending()

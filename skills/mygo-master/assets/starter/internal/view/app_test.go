@@ -3,7 +3,6 @@ package view
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -96,6 +95,10 @@ func TestASaveThatFailsIsShownAndKeepsTheDraft(t *testing.T) {
 	}
 	if a.draft != "Kept" || a.problem == "" {
 		t.Errorf("draft %q, problem %q", a.draft, a.problem)
+	}
+	tt.Advance(time.Second)
+	if !tt.HasText(a.problem) {
+		t.Errorf("the problem is not on the screen: %q", tt.Texts())
 	}
 }
 
@@ -256,8 +259,8 @@ func TestRowHoverFadesAndGoesBack(t *testing.T) {
 func TestDarkSwitchFadesTheWindowAndTellsTheHost(t *testing.T) {
 	var told []bool
 	_, tt := start(t, twoTasks(), func(dark bool) { told = append(told, dark) })
-	light := lightTheme().Background
-	dark := darkTheme().Background
+	light := lightPalette.pageTop
+	dark := darkPalette.pageTop
 	pixel := func() ui.Color {
 		p := tt.Image().RGBAAt(4, 4)
 		return ui.RGB(p.R, p.G, p.B)
@@ -278,26 +281,6 @@ func TestDarkSwitchFadesTheWindowAndTellsTheHost(t *testing.T) {
 	}
 }
 
-func TestThemeFadeCoversEveryColorAndEndsExactly(t *testing.T) {
-	want := 0
-	kind := reflect.TypeOf(ui.Theme{})
-	for i := range kind.NumField() {
-		if kind.Field(i).Type == reflect.TypeOf(ui.Color{}) && kind.Field(i).IsExported() {
-			want++
-		}
-	}
-	covered := themeColors(ui.LightTheme())
-	if len(covered) > want {
-		t.Errorf("the fade moves %d colors of %d", len(covered), want)
-	}
-	if got, base := fadedTheme(0), lightTheme(); got.Background != base.Background {
-		t.Errorf("the start of the fade is %v", got.Background)
-	}
-	if got, base := fadedTheme(1), darkTheme(); got.Background != base.Background || !got.Dark {
-		t.Errorf("the end of the fade is %v", got.Background)
-	}
-}
-
 func TestNothingMovesWithLessMotion(t *testing.T) {
 	_, tt := start(t, twoTasks(), func(bool) {})
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
@@ -315,15 +298,4 @@ func TestEveryTargetIsLargeEnough(t *testing.T) {
 	if small := smallTargets(tt, 28, "Dark mode", "New task", "Add", "First", "Remove First"); len(small) > 0 {
 		t.Errorf("targets under 28 DIP: %v", small)
 	}
-}
-
-func smallTargets(tt *ui.Tester, least float32, labels ...string) []string {
-	var small []string
-	for _, label := range labels {
-		r, ok := tt.Find(label)
-		if !ok || r.W < least || r.H < least {
-			small = append(small, fmt.Sprintf("%s %.1fx%.1f", label, r.W, r.H))
-		}
-	}
-	return small
 }

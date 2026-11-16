@@ -99,11 +99,22 @@ var orders = []order{
 	{"#ORD-10040", "Isabella Clark", statusCompleted, 129, "Jun 16, 2025"},
 }
 
+var searchKeys = func() []string {
+	keys := make([]string, len(orders))
+	for i, o := range orders {
+		keys[i] = strings.ToLower(o.id + " " + o.customer + " " + o.status + " " + o.date)
+	}
+	return keys
+}()
+
 func filterOrders(query string) []order {
 	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return orders
+	}
 	var matched []order
-	for _, o := range orders {
-		if strings.Contains(strings.ToLower(o.id+" "+o.customer+" "+o.status+" "+o.date), q) {
+	for i, o := range orders {
+		if strings.Contains(searchKeys[i], q) {
 			matched = append(matched, o)
 		}
 	}

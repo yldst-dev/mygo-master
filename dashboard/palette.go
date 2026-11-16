@@ -10,7 +10,7 @@ type palette struct {
 	railTop, railBottom, pageTop, pageBottom, bar, card ui.Color
 	line, grid, axis, field, fieldLine, head            ui.Color
 	ink, body, muted                                    ui.Color
-	accent, accentInk, onAccent                         ui.Color
+	accent, accentFill, accentInk, onAccent             ui.Color
 	navActive, hover, avatar, toggle, knob              ui.Color
 	shadow, areaStrong, areaFaint                       ui.Color
 	good, info, bad                                     tone
@@ -24,7 +24,7 @@ var lightPalette = palette{
 	line: ui.Hex("#E6E9F0"), grid: ui.Hex("#E7E9F0"), axis: ui.Hex("#BCC5D5"),
 	field: ui.Hex("#F4F5FA"), fieldLine: ui.Hex("#DCE1EB"), head: ui.Hex("#F2F4FA"),
 	ink: ui.Hex("#0B1220"), body: ui.Hex("#434A62"), muted: ui.Hex("#545B75"),
-	accent: ui.Hex("#0A5FFE"), accentInk: ui.Hex("#0A52EE"), onAccent: ui.Hex("#FFFFFF"),
+	accent: ui.Hex("#0A5FFE"), accentFill: ui.Hex("#0A5FFE"), accentInk: ui.Hex("#0A52EE"), onAccent: ui.Hex("#FFFFFF"),
 	navActive: ui.Hex("#E3EBFC"), hover: ui.Hex("#EEF1F9"), avatar: ui.Hex("#C6D9FD"),
 	toggle: ui.Hex("#DAE2F5"), knob: ui.Hex("#FFFFFF"),
 	shadow:     ui.RGBA(15, 23, 42, 0.05),
@@ -42,7 +42,7 @@ var darkPalette = palette{
 	line: ui.Hex("#232C40"), grid: ui.Hex("#232C40"), axis: ui.Hex("#3B465E"),
 	field: ui.Hex("#182034"), fieldLine: ui.Hex("#2A3450"), head: ui.Hex("#1A2236"),
 	ink: ui.Hex("#F3F6FC"), body: ui.Hex("#C4CCDD"), muted: ui.Hex("#8E98AE"),
-	accent: ui.Hex("#3D7BFF"), accentInk: ui.Hex("#7CAEFF"), onAccent: ui.Hex("#FFFFFF"),
+	accent: ui.Hex("#3D7BFF"), accentFill: ui.Hex("#2F6BF2"), accentInk: ui.Hex("#7CAEFF"), onAccent: ui.Hex("#FFFFFF"),
 	navActive: ui.Hex("#1B2B4D"), hover: ui.Hex("#18213A"), avatar: ui.Hex("#1F3566"),
 	toggle: ui.Hex("#232D45"), knob: ui.Hex("#0F1524"),
 	shadow:     ui.RGBA(0, 0, 0, 0.25),
@@ -58,7 +58,7 @@ func (p *palette) channels() []*ui.Color {
 		&p.railTop, &p.railBottom, &p.pageTop, &p.pageBottom, &p.bar, &p.card,
 		&p.line, &p.grid, &p.axis, &p.field, &p.fieldLine, &p.head,
 		&p.ink, &p.body, &p.muted,
-		&p.accent, &p.accentInk, &p.onAccent,
+		&p.accent, &p.accentFill, &p.accentInk, &p.onAccent,
 		&p.navActive, &p.hover, &p.avatar, &p.toggle, &p.knob,
 		&p.shadow, &p.areaStrong, &p.areaFaint,
 		&p.good.background, &p.good.ink, &p.good.dot,
@@ -83,24 +83,40 @@ func fadedPalette(darkness float32) *palette {
 	return &faded
 }
 
-func (p *palette) status(status string) tone {
-	switch status {
-	case statusCompleted:
-		return p.good
-	case statusCancelled:
-		return p.bad
-	}
-	return p.info
-}
-
 func (p *palette) theme(dark bool) *ui.Theme {
 	t := *ui.LightTheme()
 	if dark {
 		t = *ui.DarkTheme()
 	}
-	t.Background, t.Surface, t.SurfaceHover = p.pageTop, p.card, p.hover
+	t.Background, t.Surface, t.SurfaceHover, t.SurfacePressed = p.pageTop, p.card, p.hover, p.toggle
 	t.Border, t.Text, t.TextMuted = p.line, p.ink, p.muted
-	t.Accent, t.AccentHover, t.AccentPressed, t.AccentText = p.accent, p.accent, p.accent, p.onAccent
+	t.Accent, t.AccentHover, t.AccentPressed, t.AccentText = p.accentFill, p.accentFill, p.accentFill, p.onAccent
+	t.InactiveAccent = p.accentFill
 	t.Focus, t.Radius = p.accent, 8
 	return &t
+}
+
+var restThemes = [2]*ui.Theme{lightPalette.theme(false), darkPalette.theme(true)}
+
+func themeColors(t *ui.Theme) []*ui.Color {
+	return []*ui.Color{
+		&t.Background, &t.Surface, &t.SurfaceHover, &t.SurfacePressed, &t.Border, &t.Text, &t.TextMuted,
+		&t.Accent, &t.AccentHover, &t.AccentPressed, &t.AccentText, &t.InactiveAccent,
+		&t.Danger, &t.Warning, &t.Success, &t.Selection, &t.Focus, &t.Inverse, &t.InverseText, &t.Scrollbar,
+	}
+}
+
+func fadedTheme(darkness float32) *ui.Theme {
+	switch darkness {
+	case 0:
+		return restThemes[0]
+	case 1:
+		return restThemes[1]
+	}
+	faded := *restThemes[0]
+	from, to := themeColors(&faded), themeColors(restThemes[1])
+	for i, color := range from {
+		*color = color.Mix(*to[i], darkness)
+	}
+	return &faded
 }

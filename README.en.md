@@ -34,7 +34,7 @@ In Claude Code, start a new session and call it with `/mygo-master`. Its descrip
 | Path | Contents |
 |---|---|
 | [`skills/mygo-master`](skills/mygo-master) | The skill: work order and checklist, 6 reference documents, a clean architecture starter, the dashboard source as its design example, check scripts |
-| [`dashboard`](dashboard) | The sample dashboard app the skill's design standards, motion values and recipes came from |
+| [`dashboard`](dashboard) | The sample dashboard app the skill's design standards, motion values and recipes came from. Its screens, files and design are written up in [dashboard/README.en.md](dashboard/README.en.md) |
 | [`docs`](docs) | Images for this page |
 
 [MyGo](https://github.com/egoist/mygo) is a framework for desktop apps in Go. With its `ui` package it draws the interface itself, without a web view. This skill tells an agent how to handle versions, structure, motion and verification when it builds or changes a MyGo app.
@@ -92,7 +92,11 @@ go tool mygo build -skip-dmg
 
 The dashboard was built before the clean architecture rule went into the skill, so it is a single package. For the structure of a new app, see the [starter](skills/mygo-master/assets/starter). Orders and customers on screen are made-up sample data.
 
-The skill carries a copy of this source as its design example ([`skills/mygo-master/examples/dashboard`](skills/mygo-master/examples/dashboard)). Three spots are below the 28 DIP standard: the dropdown menu rows (27.3 tall), the clear button in the search field (21×21) and the order ID links in the table (17.1 tall). The skill lists them as spots not to copy.
+The skill carries a copy of this source as its design example ([`skills/mygo-master/examples/dashboard`](skills/mygo-master/examples/dashboard)). `check_snippets.py` checks that the copy matches the original.
+
+The design system's code has three layers: values, motion and components. `palette.go` (color roles, light and dark, the theme fade), `motion.go` (motion values, `progress`, `pressable`) and `components.go` (card, status pill, table, dropdown menu, segmented control, search field, theme switch, chart tooltip) are the files the dashboard uses, shipped as they are in the skill. A new app gets the first two copied into `internal/view/`, and `new_app.py --kit dashboard` copies the components too. The components are not tied to app state: they take the palette and only icons, state pointers, callbacks and texts, and a test that builds a tiny view from the components alone goes with them.
+
+The dashboard also had spots below 28 DIP (menu rows 27.3 tall, the clear button in the search field 21×21, the order ID links in the table 17.1 tall). All are fixed and a size test keeps them so. In dark mode, white text on the month pill and the highlighted menu row (3.84:1) and in light mode the avatar initials (4.27:1) fall short of 4.5:1; fixing them changes the look, so they were left.
 
 ## Install by hand
 
@@ -110,13 +114,14 @@ If `~/.claude/skills/mygo-master` already exists, delete it first. Copying over 
 python3 skills/mygo-master/scripts/check_snippets.py
 ```
 
-This compiles and tests the Go code in the documents against the latest MyGo, checks that every API name the documents mention exists in that version, runs the new app script to the end, and tests the bundled dashboard copy on that version. It downloads the latest MyGo, so it needs a network connection.
+This compiles and tests the Go code in the documents against the latest MyGo, checks that every API name the documents mention exists in that version, runs the new app script to the end, tests the bundled dashboard copy on that version, and checks that the palette file and the motion value lines match the example and that the colors in the design document exist in the palette. Run in the repository, it also checks that `dashboard` and its copy match. It downloads the latest MyGo, so it needs a network connection.
 
 ## What was checked
 
-- Checked on macOS 27.2 with Go 1.27.3 and MyGo v0.7.4.
-- Not run on Windows or Linux.
-- Enter with a real Korean input method, web windows, `Timeline` and `Draggable` are written from source and docs only.
+- Checked on macOS 27.2 with Go 1.27.3 and MyGo v0.9.1: the check script, the tests, real windows and the release build all ran on v0.9.1.
+- The skill and the dashboard were built on v0.7.4. The same screens shot on v0.7.4 and on v0.9.1 matched except for a few dozen pixels off by 1/255 on resting screens, and motion ended at the same times.
+- Windows and Linux were only compiled, not run.
+- Enter with a real Korean input method (the release notes and source say v0.8.3 fixed it), the feel of a real mouse, web windows, `Timeline` and `Draggable` are written from source and docs only.
 
 ## Built with
 

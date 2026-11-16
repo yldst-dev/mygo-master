@@ -79,9 +79,18 @@ func main() {
 			fmt.Fprintln(os.Stderr, "no PNG files in", left)
 			os.Exit(2)
 		}
+		seen := map[string]bool{}
 		for _, path := range names {
 			name := filepath.Base(path)
+			seen[name] = true
 			same = compare(name, path, filepath.Join(right, name)) && same
+		}
+		added, _ := filepath.Glob(filepath.Join(right, "*.png"))
+		for _, path := range added {
+			if name := filepath.Base(path); !seen[name] {
+				fmt.Printf("%-24s only in %s\n", name, right)
+				same = false
+			}
 		}
 	} else {
 		same = compare(filepath.Base(left), left, right)

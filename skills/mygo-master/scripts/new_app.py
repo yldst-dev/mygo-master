@@ -8,6 +8,8 @@ import sys
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STARTER = os.path.join(SKILL, "assets", "starter")
 CLI = "github.com/egoist/mygo/cmd/mygo@latest"
+KIT = ("motion.go", "palette.go", "palette_test.go", "targets_test.go")
+DASHBOARD_KIT = ("components.go", "components_test.go")
 
 
 def run(command, directory):
@@ -29,7 +31,7 @@ def module_of(directory):
     sys.exit("go.mod names no module")
 
 
-def copy_starter(directory, module):
+def copy_starter(directory, module, extra):
     for root, _, names in os.walk(STARTER):
         for name in names:
             source = os.path.join(root, name)
@@ -39,10 +41,11 @@ def copy_starter(directory, module):
                 text = f.read()
             with open(target, "w") as f:
                 f.write(text.replace('"starter/', f'"{module}/'))
-    with open(os.path.join(SKILL, "assets", "motion.go")) as f:
-        motion = f.read().replace("package main", "package view", 1)
-    with open(os.path.join(directory, "internal", "view", "motion.go"), "w") as f:
-        f.write(motion)
+    for name in KIT + extra:
+        with open(os.path.join(SKILL, "assets", name)) as f:
+            kit = f.read().replace("package main", "package view", 1)
+        with open(os.path.join(directory, "internal", "view", name), "w") as f:
+            f.write(kit)
 
 
 def main():
@@ -50,6 +53,7 @@ def main():
     parser.add_argument("directory")
     parser.add_argument("--name")
     parser.add_argument("--module")
+    parser.add_argument("--kit", choices=["dashboard"], help="also copy the dashboard's components (card, menu, segmented control, table, search field, tooltip, theme switch)")
     args = parser.parse_args()
     if sys.platform == "darwin" and args.name and not args.name.isascii():
         sys.exit("use an ASCII --name: codesign crashes on such an executable name; the window title can be in any language")
@@ -64,7 +68,7 @@ def main():
     run(command + [directory], parent)
     for name in ("main.go", "main_test.go"):
         os.remove(os.path.join(directory, name))
-    copy_starter(directory, module_of(directory))
+    copy_starter(directory, module_of(directory), DASHBOARD_KIT if args.kit == "dashboard" else ())
     run(["go", "mod", "tidy"], directory)
     unformatted = run(["gofmt", "-l", "."], directory)
     if unformatted.strip():

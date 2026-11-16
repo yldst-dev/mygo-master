@@ -11,24 +11,23 @@ import tempfile
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FENCE = re.compile(r"^```go( test)?\n(.*?)^```", re.M | re.S)
 IMPORTS = {
-    "bufio.": "bufio",
     "bytes.": "bytes",
     "color.": "image/color",
     "fmt.": "fmt",
-    "image.": "image",
     "log.": "log",
-    "math.": "math",
     "mygo.": "github.com/egoist/mygo",
     "os.": "os",
     "filepath.": "path/filepath",
     "reflect.": "reflect",
-    "sort.": "sort",
     "strings.": "strings",
     "testing.": "testing",
     "time.": "time",
     "ui.": "github.com/egoist/mygo/ui",
     "chart.": "github.com/egoist/mygo/ui/chart",
 }
+HEX = re.compile(r"#[0-9A-Fa-f]{6}\b")
+KIT = ("motion.go", "palette.go", "palette_test.go", "targets_test.go", "components.go", "components_test.go")
+UNTRACKED = {"build", ".mygo", ".agents", ".DS_Store"}
 TOKEN = re.compile(r"`([^`\n]+)`")
 PACKAGE_NAME = re.compile(r"\b(ui|chart|mygo)\.([A-Z]\w*)")
 METHOD_NAME = re.compile(r"(?:^|[\s(])(?:[a-z]\w*)?\.([A-Z]\w*)\(?")
@@ -62,14 +61,22 @@ def go_environment(pinned):
     return dict(os.environ, GOFLAGS="-mod=mod", GOPROXY="off") if pinned else dict(os.environ)
 
 
+def prepare(command, work):
+    done = subprocess.run(command, cwd=work, capture_output=True, text=True)
+    if done.returncode != 0:
+        print(" ".join(command), "FAILED")
+        print(done.stdout + done.stderr)
+        sys.exit(1)
+
+
 def compile_and_test(project, work):
     environment = go_environment(project)
     if project:
         for name in ("go.mod", "go.sum"):
             shutil.copy(os.path.join(project, name), work)
     else:
-        subprocess.run(["go", "mod", "init", "snippets"], cwd=work, capture_output=True, check=True)
-        subprocess.run(["go", "get", "github.com/egoist/mygo@latest"], cwd=work, capture_output=True, check=True)
+        prepare(["go", "mod", "init", "snippets"], work)
+        prepare(["go", "get", "github.com/egoist/mygo@latest"], work)
     shutil.copy(os.path.join(SKILL, "assets", "motion.go"), work)
     shutil.copy(os.path.join(SKILL, "assets", "film_test.go"), os.path.join(work, "film_test.go"))
     plain, tests, count = collect()
@@ -78,8 +85,12 @@ def compile_and_test(project, work):
     with open(os.path.join(work, "snippets_test.go"), "w") as f:
         f.write(header(tests) + tests)
     if not project:
-        subprocess.run(["go", "mod", "tidy"], cwd=work, capture_output=True, check=True)
+        prepare(["go", "mod", "tidy"], work)
     version = subprocess.run(["go", "list", "-m", "github.com/egoist/mygo"], cwd=work, env=environment, capture_output=True, text=True)
+    if version.returncode != 0 or not version.stdout.split():
+        print("go list -m github.com/egoist/mygo FAILED")
+        print(version.stdout + version.stderr)
+        return False
     print("checking against", version.stdout.strip())
     ok = True
     for command in (["go", "vet", "."], ["go", "test", "-count=1", "-timeout", "120s", "."]):
@@ -101,16 +112,19 @@ def compile_and_test(project, work):
 
 
 def check_starter():
-    with tempfile.TemporaryDirectory() as work:
-        done = subprocess.run(
-            [sys.executable, os.path.join(SKILL, "scripts", "new_app.py"), os.path.join(work, "app")],
-            capture_output=True,
-            text=True,
-        )
-    print("new_app.py", "ok" if done.returncode == 0 else "FAILED")
-    if done.returncode != 0:
-        print(done.stdout + done.stderr)
-    return done.returncode == 0
+    ok = True
+    for name, flags in (("new_app.py", []), ("new_app.py --kit dashboard", ["--kit", "dashboard"])):
+        with tempfile.TemporaryDirectory() as work:
+            done = subprocess.run(
+                [sys.executable, os.path.join(SKILL, "scripts", "new_app.py"), os.path.join(work, "app")] + flags,
+                capture_output=True,
+                text=True,
+            )
+        print(name, "ok" if done.returncode == 0 else "FAILED")
+        if done.returncode != 0:
+            print(done.stdout + done.stderr)
+            ok = False
+    return ok
 
 
 def check_example():
@@ -130,6 +144,49 @@ def check_example():
                 return False
     print("examples/dashboard ok")
     return True
+
+
+def read_tree(root):
+    files = {}
+    for directory, names, filenames in os.walk(root):
+        names[:] = [name for name in names if name not in UNTRACKED]
+        for name in filenames:
+            if name not in UNTRACKED:
+                path = os.path.join(directory, name)
+                with open(path, "rb") as f:
+                    files[os.path.relpath(path, root)] = f.read()
+    return files
+
+
+def check_kit():
+    example = os.path.join(SKILL, "examples", "dashboard")
+    problems = []
+    for name in KIT:
+        with open(os.path.join(SKILL, "assets", name)) as a, open(os.path.join(example, name)) as b:
+            original, copy = a.read(), b.read()
+        if name == "motion.go":
+            kept = {line.strip() for line in original.splitlines()}
+            for line in copy.splitlines():
+                if line.strip() and line.strip() not in kept:
+                    problems.append(f"examples/dashboard/motion.go has a line assets/motion.go does not: {line.strip()}")
+        elif original != copy:
+            problems.append(f"assets/{name} differs from examples/dashboard/{name}")
+    with open(os.path.join(SKILL, "references", "design.md")) as f:
+        colors = re.search(r"^## 색$(.*?)^## 글자$", f.read(), re.M | re.S).group(1)
+    with open(os.path.join(example, "palette.go")) as f:
+        palette = f.read().upper()
+    for stale in sorted({code.upper() for code in HEX.findall(colors)} - {code for code in HEX.findall(palette)}):
+        problems.append(f"design.md names {stale}, which palette.go does not have")
+    repository = os.path.normpath(os.path.join(SKILL, "..", "..", "dashboard"))
+    if os.path.isfile(os.path.join(repository, "mygo.json")):
+        kept, original = read_tree(example), read_tree(repository)
+        for name in sorted(set(kept) | set(original)):
+            if kept.get(name) != original.get(name):
+                problems.append(f"examples/dashboard/{name} differs from dashboard/{name}")
+    for problem in problems:
+        print(problem)
+    print("kit and example", "ok" if not problems else "FAILED")
+    return not problems
 
 
 def source_text(project):
@@ -173,7 +230,7 @@ def check_names(project):
                     missing.add(f".{name} in {where}")
             if re.fullmatch(r"[A-Z]\w+(\(.*\))?", token):
                 name = re.match(r"[A-Z]\w+", token).group(0)
-                if name not in FOREIGN and not re.search(r"func\s+(\([^)]*\)\s*)?" + name + r"\b|\btype\s+" + name + r"\b|^\s*(?:\w+,\s*)*" + name + r"[\s,]", text, re.M):
+                if name not in FOREIGN and not re.match(r"Test[A-Z]", name) and not re.search(r"func\s+(\([^)]*\)\s*)?" + name + r"\b|\btype\s+" + name + r"\b|^\s*(?:\w+,\s*)*" + name + r"[\s,]", text, re.M):
                     missing.add(f"{name} in {where}")
     for item in sorted(missing):
         print("name not found in this version:", item)
@@ -196,7 +253,7 @@ def main():
         work = temporary.name
     built = compile_and_test(project, work)
     named = check_names(project or work)
-    bundled = project is not None or all([check_starter(), check_example()])
+    bundled = project is not None or all([check_starter(), check_example(), check_kit()])
     if temporary:
         temporary.cleanup()
     if not (built and named and bundled):

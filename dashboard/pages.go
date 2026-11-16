@@ -11,22 +11,12 @@ import (
 const (
 	compactWidth = 1394
 	monthWidth   = 49.66
-	tipPadding   = 8
-	tipFontSize  = 12.5
 	donutRadius  = 91
 	donutHole    = 54
 	donutGrowth  = 5
 	donutSink    = 3
 	donutFade    = 0.8
 )
-
-func card(c *ui.Context, p *palette) ui.Element {
-	return ui.Column(c).Radius(16).Background(p.card).Border(1, p.line).Shadow(0, 1, 3, 0, p.shadow)
-}
-
-func cardTitle(c *ui.Context, title string) {
-	ui.Text(c, title).FontSize(20.5).Bold().Role(ui.RoleHeading).Margin(0, 0, 4, 0)
-}
 
 func (a *app) dashboardPage(c *ui.Context) {
 	p := a.colors()
@@ -54,7 +44,7 @@ func (a *app) dashboardPage(c *ui.Context) {
 	card(c, p).Padding(15, 16, 20, 22).Gap(13).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).Children(func() {
 			cardTitle(c, "Recent Orders")
-			view := pressable(ui.ButtonBase(c), 0.96).Height(30).Padding(0, 14).Gap(5).Radius(8).Border(1, p.fieldLine)
+			view := pressable(ui.ButtonBase(c), 0.96).Label("View All").Height(30).Padding(0, 14).Gap(5).Radius(8).Border(1, p.fieldLine)
 			var nudge ui.Pose
 			if view.Hovered() {
 				nudge.X = 3
@@ -88,7 +78,7 @@ func (a *app) metricCard(c *ui.Context, m metric) {
 		})
 		ui.Row(c).Gap(7).Margin(11, 0, 0, 0).Children(func() {
 			deltaPill(c, p, (value-previous)/previous*100)
-			ui.Text(c, "vs. last month").FontSize(12.5).TextColor(p.muted).NoWrap().Transition(deltaFollow)
+			ui.Text(c, "vs. last month").FontSize(12.5).TextColor(p.muted).NoWrap().Transition(followFit)
 		})
 		sparkline(c, p, m).Label(m.label+" trend").Absolute().Top(53).Right(14).Size(85, 45)
 	})
@@ -99,33 +89,13 @@ func deltaPill(c *ui.Context, p *palette, delta float64) {
 	if delta < 0 {
 		icon, sign = arrowDownIcon, "−"
 	}
-	pill := ui.Row(c).Height(24).Padding(0, 9, 0, 7).Gap(4).Radius(12).ClipY().Transition(deltaResize)
+	pill := ui.Row(c).Height(24).Padding(0, 9, 0, 7).Gap(4).Radius(12).ClipY().Transition(growFit)
 	falling := progress(pill, "falling", delta < 0, fadeMotion)
 	ink := p.good.ink.Mix(p.bad.ink, falling)
 	pill.Background(p.good.background.Mix(p.bad.background, falling)).Children(func() {
 		ui.Icon(c, icon).Size(14, 14).TextColor(ink).ContentTransition(ui.ContentTransition{})
 		ui.Text(c, fmt.Sprintf("%s%.1f%%", sign, math.Abs(delta))).FontSize(12.5).FontWeight(600).TextColor(ink).NoWrap().ContentTransition(rollDigits)
 	})
-}
-
-func pickPoint(c *ui.Context, area ui.Element, xs []float32, describe func(int) string) int {
-	selected := ui.Local(area, "selected", func() int { return -1 })
-	chart.Select(c, area, selected, xs, describe)
-	if !area.Hovered() && !area.Focused() {
-		*selected = -1
-	}
-	return *selected
-}
-
-func chartTip(c *ui.Context, p *palette, width, x, y float32, text string) {
-	textWidth, _ := c.MeasureText(0, ui.Span{Text: text, Size: tipFontSize})
-	reach := (tipPadding + textWidth/2) / width
-	chart.Anchor(c.Key("tip"), min(max(x, reach), 1-reach), y, ui.Center, ui.End, func() {
-		ui.Row(c).Height(26).PaddingX(tipPadding).Margin(0, 0, 8, 0).Radius(5).Background(p.ink).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2)).
-			Role(ui.RoleTooltip).ClipY().Transition(tipResize).Children(func() {
-			ui.Text(c, text).FontSize(tipFontSize).TextColor(p.pageTop).NoWrap().ContentTransition(tipDigits)
-		})
-	}).IgnoreInput(true).Transition(markMotion)
 }
 
 func sparkline(c *ui.Context, p *palette, m metric) ui.Element {
@@ -157,29 +127,9 @@ func (a *app) revenueCard(c *ui.Context) ui.Element {
 	return card(c, p).Padding(15, 19, 17, 22).Gap(26).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).Children(func() {
 			cardTitle(c, "Revenue (Monthly)")
-			a.monthPicker(c)
+			segmented(c, p, "month", "Month", &a.month, months, monthWidth)
 		})
 		a.revenueChart(c)
-	})
-}
-
-func (a *app) monthPicker(c *ui.Context) {
-	p := a.colors()
-	picker := ui.SegmentedBase(c.Key("month"), &a.month, len(months))
-	pillX := picker.Track.AnimateTo("pill", float32(a.month)*monthWidth, pillMotion)
-	picker.Track.Label("Month").Height(30).Radius(8).Border(1, p.line).Draw(func(pt *ui.Painter, r ui.Rect) {
-		pt.Fill(ui.Rect{X: r.X + 1 + pillX, Y: r.Y + 1, W: monthWidth, H: 28}, p.accent, 7)
-	}).Children(func() {
-		for i, name := range months {
-			segment := pressable(picker.Segment(i), 0.94).Size(monthWidth, 28).Radius(7).Center()
-			selected := i == a.month
-			segment.Background(p.hover.Alpha(progress(segment, "hover", segment.Hovered() && !selected, fadeMotion)))
-			offset := pillX - float32(i)*monthWidth
-			covered := max(0, 1-max(offset, -offset)/monthWidth)
-			segment.Children(func() {
-				ui.Text(c, name).FontSize(14).FontWeight(labelWeight(selected)).TextColor(p.body.Mix(p.onAccent, covered))
-			})
-		}
 	})
 }
 
@@ -311,51 +261,21 @@ func (a *app) categoryCard(c *ui.Context) ui.Element {
 	})
 }
 
-type column struct {
-	title  string
-	weight float32
-}
-
-func (a *app) table(c *ui.Context, label string, columns []column, rows int, cell func(row, col int)) {
-	p := a.colors()
-	ui.Column(c).Label(label).Role(ui.RoleTable).Children(func() {
-		ui.Row(c).Height(37).Padding(0, 12, 3, 12).Radius(6).Background(p.head).Role(ui.RoleRow).Children(func() {
-			for _, col := range columns {
-				ui.Text(c, col.title).FontSize(14.5).FontWeight(500).TextColor(p.body).Grow(col.weight).Basis(0).Role(ui.RoleColumnHeader)
-			}
-		})
-		for row := range rows {
-			ui.Row(c).Height(38).PaddingX(12).BorderWidth(0, 0, 1, 0).BorderColor(p.line).Role(ui.RoleRow).Children(func() {
-				for i, col := range columns {
-					ui.Row(c).Grow(col.weight).Basis(0).Role(ui.RoleCell).Children(func() {
-						cell(row, i)
-					})
-				}
-			})
-		}
-		if rows == 0 {
-			ui.Text(c, "Nothing matches your search.").FontSize(14.5).TextColor(p.muted).Padding(12)
-		}
-	})
-}
-
-func cellText(c *ui.Context, text string) {
-	ui.Text(c, text).FontSize(14.5).NoWrap()
-}
-
 func (a *app) ordersTable(c *ui.Context, rows []order) {
 	p := a.colors()
 	columns := []column{{"Order ID", 203}, {"Customer", 254}, {"Status", 289}, {"Amount", 163}, {"Date", 192}}
-	a.table(c, "Orders", columns, len(rows), func(row, col int) {
+	table(c, p, "Orders", "Nothing matches your search.", columns, len(rows), func(row, col int) {
 		o := rows[row]
 		switch col {
 		case 0:
-			open := pressable(ui.ButtonBase(c), 0.97).Label(o.id).Radius(4).Cursor(ui.CursorPointer)
+			open := pressable(ui.ButtonBase(c), 0.97).Label(o.id).FillHeight().Radius(4).Cursor(ui.CursorPointer)
 			line := progress(open, "line", open.Hovered(), quickMotion)
-			open.Draw(func(pt *ui.Painter, r ui.Rect) {
-				pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W * line, H: 1}, p.accentInk, 0)
-			}).Children(func() {
-				ui.Text(c, o.id).FontSize(14.5).TextColor(p.accentInk)
+			open.Children(func() {
+				ui.Box(c).Draw(func(pt *ui.Painter, r ui.Rect) {
+					pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W * line, H: 1}, p.accentInk, 0)
+				}).Children(func() {
+					ui.Text(c, o.id).FontSize(14.5).TextColor(p.accentInk)
+				})
 			})
 			if open.Clicked() {
 				a.page, a.query = pageOrders, o.id
@@ -372,11 +292,14 @@ func (a *app) ordersTable(c *ui.Context, rows []order) {
 	})
 }
 
-func statusPill(c *ui.Context, colors tone, label string) {
-	ui.Row(c).Height(24).Padding(0, 12, 0, 10).Gap(9).Radius(12).Background(colors.background).Children(func() {
-		ui.Box(c).Size(8, 8).Radius(4).Background(colors.dot)
-		ui.Text(c, label).FontSize(13.5).TextColor(colors.ink).NoWrap()
-	})
+func (p *palette) status(status string) tone {
+	switch status {
+	case statusCompleted:
+		return p.good
+	case statusCancelled:
+		return p.bad
+	}
+	return p.info
 }
 
 func (a *app) analyticsPage(c *ui.Context) {
@@ -385,7 +308,7 @@ func (a *app) analyticsPage(c *ui.Context) {
 	card(c, p).Padding(15, 16, 20, 22).Gap(13).Children(func() {
 		cardTitle(c, "Monthly Breakdown")
 		columns := []column{{"Month", 1}, {"Total Revenue", 1}, {"Active Users", 1}, {"Orders", 1}, {"Conversion Rate", 1}}
-		a.table(c, "Monthly breakdown", columns, len(months), func(row, col int) {
+		table(c, p, "Monthly breakdown", "Nothing matches your search.", columns, len(months), func(row, col int) {
 			if col == 0 {
 				cellText(c, months[row])
 				return
@@ -416,7 +339,7 @@ func (a *app) customersPage(c *ui.Context) {
 			cardTitle(c, "All Customers")
 		})
 		columns := []column{{"Customer", 2}, {"Orders", 1}, {"Total Spent", 1}, {"Last Order", 1}}
-		a.table(c, "Customers", columns, len(rows), func(row, col int) {
+		table(c, p, "Customers", "Nothing matches your search.", columns, len(rows), func(row, col int) {
 			customer := rows[row]
 			switch col {
 			case 0:
@@ -438,7 +361,7 @@ func (a *app) settingsPage(c *ui.Context) {
 		cardTitle(c, "Appearance")
 		ui.Row(c).Height(38).Justify(ui.SpaceBetween).Children(func() {
 			ui.Text(c, "Dark mode").FontSize(14.5).TextColor(p.body)
-			a.themeToggle(c, "Use dark mode")
+			themeSwitch(c, p, &a.dark, "Use dark mode", sunIcon, moonIcon, a.applyTheme)
 		})
 	})
 }

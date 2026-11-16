@@ -37,8 +37,7 @@ func New(tasks *usecase.Tasks, dark bool, setDark func(bool)) *App {
 }
 
 func (a *App) View(c *ui.Context) {
-	darkness := progress(c.Root(), "theme", a.dark, themeMotion)
-	c.SetTheme(fadedTheme(darkness))
+	c.SetTheme(fadedTheme(progress(c.Root(), "theme", a.dark, themeMotion)))
 	ui.Column(c).Fill().Padding(24).Gap(16).Children(func() {
 		a.header(c)
 		a.composer(c)
