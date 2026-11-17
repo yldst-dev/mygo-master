@@ -158,7 +158,7 @@ func donut(c *ui.Context, p *palette, v donutView) ui.Element {
 				lit[i] = progress(ring, name, i == active, fadeMotion)
 				rows[i].TextColor(p.ink.Mix(p.muted, dim-lit[i])).Children(func() {
 					ui.Box(c).Size(12, 12).Radius(6).Background(slice(i).Mix(p.card, donutFade*(dim-lit[i])))
-					ui.Text(c, name).FontSize(13.5).Grow(1)
+					ui.Text(c, name).FontSize(13.5).Grow(1).SingleLine()
 					ui.Text(c, fmt.Sprintf("%.0f%%", v.shares[i])).FontSize(13.5).ContentTransition(rollDigits)
 				})
 			}

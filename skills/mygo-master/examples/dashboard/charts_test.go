@@ -303,3 +303,25 @@ func TestDonutKeepsTheTipWhileThePointerRestsOnIt(t *testing.T) {
 		t.Error("the tip keeps asking for frames under the pointer")
 	}
 }
+
+func TestDonutLegendKeepsALongNameOnOneLine(t *testing.T) {
+	names := []string{"Red", "Green", "A legend name that is far too long to fit beside its slice"}
+	tt := kitScreen(520, 300, func(c *ui.Context, p *palette) {
+		donut(c, p, donutView{
+			label: "Split", names: names, shares: []float64{50, 30, 20}, center: "100", caption: "Total",
+			describe: func(i int) string { return names[i] },
+		})
+	})
+	row, ok := tt.Find(names[2])
+	if !ok {
+		t.Fatalf("no legend row in %q", tt.Texts())
+	}
+	background := kitPixel(tt, row.X+row.W-2, row.Y-4)
+	for y := row.Y; y < row.Y+3; y++ {
+		for x := row.X + 26; x < row.X+26+60; x++ {
+			if !kitSame(kitPixel(tt, x, y), background) {
+				t.Fatalf("a second line of the long name shows at the top of its row, at %v,%v", x, y)
+			}
+		}
+	}
+}
