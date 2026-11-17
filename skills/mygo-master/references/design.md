@@ -9,7 +9,7 @@
 - 앱 화면은 `WindowOptions.Content` 에 `ui.View` 를 주고 MyGo 위젯과 베이스로 그린다. HTML, CSS, JavaScript, 웹뷰(`WindowOptions.URL`, 네이티브 화면 안의 웹뷰)는 쓰지 않는다. 웹 페이지를 띄우는 것 자체가 요청일 때만 웹 창을 쓴다.
 - 아이콘은 SVG를 `ui.MustParseSVG` 로 읽는다. MyGo가 Go 코드로 해석해서 그린다. 글자는 시스템 글꼴이고 macOS에서는 CoreText가 그린다.
 - 창은 실제 macOS 창이다. 타이틀바를 숨겼다면 `c.TitleBar()` 로 창 버튼 자리를 비우고, 끌 수 있는 줄에 `DragWindow()` 를 건다. 크기와 위치는 `StateKey` 로 기억한다.
-- MyGo(v0.9.1에서 확인)는 웹 창 기능 때문에 앱을 켤 때 WebKit을 늘 불러온다(`internal/darwin/objc.go`). 그래서 "WebKit이 없다"고 보고하지 않고 "WebKit 코드가 돌지 않는다"까지만 말한다.
+- MyGo(v0.9.2에서 확인)는 웹 창 기능 때문에 앱을 켤 때 WebKit을 늘 불러온다(`internal/darwin/objc.go`). 그래서 "WebKit이 없다"고 보고하지 않고 "WebKit 코드가 돌지 않는다"까지만 말한다.
 
 macOS에서는 이렇게 확인한다. 릴리스 빌드를 띄운 뒤 프로세스 번호를 `$PID` 에 넣는다.
 
@@ -126,7 +126,6 @@ lsof -nP -a -p "$PID" -i
 |---|---|
 | 내비 항목 | 210×45, 간격 4.5 |
 | 사이드바 계정 버튼 | 198×46 |
-| 상단 계정 버튼 | 163.4×46 |
 | 검색칸 | 높이 40. 칸 어디를 눌러도 입력에 포커스가 간다 |
 | 알림 버튼 | 34×34, 아이콘 26 |
 | 다크 모드 스위치 | 58×30 |
@@ -226,9 +225,10 @@ func clearButton(c *ui.Context, query *string) ui.Element {
 ## 복잡하지 않게
 
 - 화면 하나는 질문 하나에 답한다. 대시보드 첫 화면은 지표 4개, 월별 매출, 분류별 매출, 최근 주문 5개로 "이번 달은 어떤가"에 답한다.
-- 내비 항목은 5개, 상단 막대는 검색, 알림, 테마, 계정 네 가지뿐이다.
+- 내비 항목은 5개, 상단 막대는 검색, 알림, 테마 세 가지뿐이다.
+- 같은 정보를 두 곳에 두지 않는다. 사용자 이름과 계정 메뉴는 사이드바 아래 한 곳에만 있다. 상단 막대에 한 번 더 두면 이름과 아바타만 겹치고 메뉴 내용도 같다.
 - 카드마다 제목 하나에 동작 하나다("View All", 월 선택).
-- 가끔 쓰는 동작은 메뉴 안에 둔다. 설정과 종료는 계정 메뉴에 있다.
+- 가끔 쓰는 동작은 메뉴 안에 둔다. 설정과 종료는 사이드바 아래의 계정 메뉴에 있다.
 - 아이콘만 있는 버튼을 줄지어 놓지 않는다. 뜻이 바로 보이지 않으면 글자를 붙인다.
 - 첫 화면의 표는 5행까지 보여 주고 나머지는 "View All" 로 넘긴다.
 - 같은 종류의 요소는 크기와 여백이 같다. 카드 제목은 모두 20.5, 카드 왼쪽 여백은 20~22다.
@@ -236,19 +236,26 @@ func clearButton(c *ui.Context, query *string) ui.Element {
 
 ## 예시 지도
 
-`examples/dashboard` 는 읽고 따라 하는 소스다. 돌려 보려면 임시 폴더에 복사한 뒤 `go tool mygo dev` 로 띄운다. 스킬 폴더 안에서 빌드하지 않는다.
+`examples/dashboard` 는 읽고 따라 하는 소스다. 돌려 보려면 임시 폴더에 복사한 뒤 `go tool mygo dev` 로 띄운다. 스킬 폴더 안에서 빌드하지 않는다. 화면을 이루는 부품은 앱 상태와 떨어져 있고, `shell.go` 와 `pages.go` 는 부품을 부르며 앱 상태를 잇는 얇은 층이다.
 
 | 보고 싶은 것 | 파일과 함수 |
 |---|---|
 | 색 역할, 라이트와 다크, 테마 연결 | `palette.go` 의 `palette`, `fadedPalette`, `theme` |
-| 모션 값, `progress`, `pressable` | `motion.go` |
-| 사이드바와 미끄러지는 내비 알약 | `shell.go` 의 `sidebar`, `navItem` |
-| 상단 막대와 알림 | `shell.go` 의 `topbar`, `notifications` |
+| 모션 값, `progress`, `pressable`, 벨 키프레임 | `motion.go` |
+| 사이드바, 미끄러지는 내비 알약, 아래쪽 계정 메뉴 | `frame.go` 의 `sidebar`, `navItem` |
+| 상단 막대와 알림 벨 | `frame.go` 의 `topbar`, `notificationBell` |
+| 사이드바, 상단 막대, 스크롤 영역을 한 틀로 | `frame.go` 의 `appFrame` |
 | 검색칸, 스위치, 드롭다운 메뉴, 월 세그먼트 | `components.go` 의 `searchField`, `themeSwitch`, `menuButton`, `dropdown`, `segmented` |
 | 카드, 표, 상태 알약 | `components.go` 의 `card`, `table`, `statusPill` |
-| 지표와 폭이 바뀌는 배지 | `pages.go` 의 `metricCard`, `deltaPill` |
-| 그래프, 도넛 | `pages.go` 의 `revenueChart`, `categoryCard` |
-| 그래프 말풍선 | `components.go` 의 `pickPoint`, `chartTip` |
+| 지표 카드와 폭이 바뀌는 배지 | `components.go` 의 `metricCard`, `deltaPill` |
+| "View All" 단추, 밑줄이 자라는 링크 | `components.go` 의 `moreButton`, `textLink` |
+| 미니 그래프, 월별 영역 그래프, 도넛 | `charts.go` 의 `sparkline`, `areaChart`, `donut` |
+| 그래프 말풍선 | `charts.go` 의 `pickPoint`, `chartTip` |
+| 숫자 서식 | `formats.go` |
+| 아이콘과 라이선스 | `icons.go`, `icons/` |
+| 숨긴 타이틀바 창 | `window.go` |
+| 앱 상태에 부품을 잇는 방법 | `shell.go`, `pages.go` |
+| 부품만으로 화면을 조립하는 예 | `frame_test.go` 의 `TestAScreenBuiltFromPartsOnly` |
 | 동작 테스트 | `main_test.go` |
 
 ## 코드로 가져다 쓰기
@@ -258,16 +265,21 @@ func clearButton(c *ui.Context, query *string) ui.Element {
 | 파일 | 담은 것 | 새 앱에 |
 |---|---|---|
 | `palette.go` | 역할별 색(라이트, 다크), 테마를 바꿀 때 모든 칸을 섞는 `fadedPalette`, 위젯에 연결하는 `theme`, 위젯의 모든 색 칸까지 섞는 `fadedTheme` | 늘 복사 |
-| `motion.go` | 모션 값 이름들, `progress`, `pressable` | 늘 복사 |
+| `motion.go` | 모션 값 이름들, 벨 키프레임, `progress`, `pressable` | 늘 복사 |
 | `palette_test.go`, `targets_test.go` | 팔레트와 `Theme` 의 모든 색 칸이 섞이는지, 글자 대비가 4.5:1 이상인지, 누를 곳이 28 DIP 이상인지 재는 `smallTargets` | 늘 복사 |
-| `components.go` | 아래 부품들 | `--kit dashboard` |
-| `components_test.go` | 부품만으로 만든 작은 화면에서 부품을 시험한다. 쓰는 예시도 된다 | `--kit dashboard` |
+| `components.go` | 카드, 표, 메뉴, 세그먼트, 검색칸, 스위치, 지표 카드, 링크 | `--kit dashboard` |
+| `charts.go` | 미니 그래프, 영역 그래프, 도넛, 말풍선 | `--kit dashboard` |
+| `frame.go` | 사이드바, 상단 막대, 알림 벨, 페이지 틀 | `--kit dashboard` |
+| `formats.go` | 금액, 비율, 천 단위 서식 | `--kit dashboard` |
+| `icons.go`, `icons/` | Lucide 아이콘 15개를 읽는 코드와 SVG 파일, ISC 라이선스 | `--kit dashboard` |
+| `window.go` | 타이틀바를 숨기고 기본 크기와 최소 크기를 정한 창 옵션 | `--kit dashboard`, 프로젝트 맨 위 |
+| `components_test.go`, `charts_test.go`, `frame_test.go`, `formats_test.go`, `icons_test.go`, `window_test.go` | 부품만으로 만든 작은 화면에서 부품을 시험한다. 쓰는 예시도 된다 | `--kit dashboard` |
 
 ```sh
 python3 $SKILL/scripts/new_app.py my-app --name "My App" --kit dashboard
 ```
 
-부품은 앱 상태에 묶이지 않는다. 팔레트(`p`)를 받고, 앱에 묶인 것(아이콘, 상태 포인터, 콜백, 글자, 폭)만 매개변수로 받는다.
+부품은 앱 상태에 묶이지 않는다. 팔레트(`p`)를 받고, 앱에 묶인 것(아이콘, 상태 포인터, 콜백, 글자, 폭)만 매개변수로 받는다. 화면에 나오는 글자(제목, 이름, 비교 문구)는 모두 매개변수라서 부품 안에 박혀 있지 않다.
 
 | 부품 | 하는 일 |
 |---|---|
@@ -278,13 +290,26 @@ python3 $SKILL/scripts/new_app.py my-app --name "My App" --kit dashboard
 | `segmented(c, p, key, label, selected, names, width)` | 선택 알약이 스프링으로 미끄러지는 세그먼트 |
 | `searchField(c, p, query, icon, placeholder)`, `clearButton` | 칸 어디를 눌러도 포커스가 가고, 지우기 버튼은 28×28이다 |
 | `themeSwitch(c, p, on, label, sun, moon, changed)` | 58×30 스위치. 켜고 끄는 움직임과 아이콘이 있다 |
+| `metricCard(c, p, metricView)`, `deltaPill(c, p, delta, up, down)` | 아이콘, 굴러서 바뀌는 큰 숫자, 색과 폭이 바뀌는 증감 배지, 미니 그래프를 한 카드에 담는다 |
+| `moreButton(c, p, label, icon)`, `textLink(c, p, text)` | 호버하면 화살표가 3 움직이는 테두리 단추, 호버하면 밑줄이 자라는 표 안 링크. 둘 다 받은 쪽이 `Clicked()` 로 누름을 본다 |
+| `sparkline(c, p, values, describe)` | 호버하면 선이 두꺼워지고 점과 말풍선이 뜨는 미니 그래프 |
+| `areaChart(c, p, areaChartView)` | 눈금, 영역, 선, 점, 말풍선이 있는 그래프. `shaded` 번째 점까지 영역이 스프링으로 자란다 |
+| `donut(c, p, donutView)` | 도넛과 범례. 조각이나 범례 행에 호버하면 조각이 자라고 나머지가 흐려지며, 키보드로도 훑는다 |
 | `pickPoint(c, area, xs, describe)`, `chartTip(c, p, width, x, y, text)` | 그래프 영역 전체에서 가장 가까운 값을 고르고, 경계 안에 머무는 말풍선을 띄운다 |
+| `sidebar(c, p, title, items, selected, choose, account)`, `navItem`, `logo`, `avatar` | 폭 237의 사이드바. 미끄러지는 선택 알약과 아래쪽 계정 메뉴가 있고, 숨긴 타이틀바면 창 버튼 자리를 비운다 |
+| `topbar(c, p, content)`, `notificationBell(c, p, bell)` | 높이 69의 상단 막대(끌면 창이 움직이고 오른쪽 창 버튼 자리를 비운다). 벨은 열 때마다 한 번 흔들리고 점은 한 번 열어 보면 사라진다 |
+| `appFrame(c, p, pageKey, rail, bar, body)` | 사이드바, 상단 막대, 페이지 영역을 한 틀로 묶는다. 페이지가 바뀌면 스크롤이 맨 위로 가고 새 페이지가 6 아래에서 들어온다 |
+| `grouped`, `dollars`, `cents`, `thousands`, `rate`, `axisDollars` | `mygo/i18n` 으로 천 단위를 끊는 금액과 비율 서식 |
+| `dashboardWindow(title, view)` | 1440×900, 최소 1024×680, 타이틀바 숨김, 크기를 기억하는 창 옵션 |
 | `labelWeight(selected)` | 선택되면 500에서 600으로 |
 
-- 새 앱은 `scripts/new_app.py` 가 파일을 `internal/view/` 로 복사한다. 패키지 이름만 `view` 로 바뀐다. 복사한 뒤에는 그 앱의 파일이니 색과 부품을 마음대로 고친다. 쓰지 않는 부품과 모션 값 줄은 지우고, 지운 부품의 테스트(`components_test.go` 의 같은 이름 테스트)도 함께 지운다.
+- 새 앱은 `scripts/new_app.py` 가 파일을 `internal/view/` 로 복사한다. 패키지 이름만 `view` 로 바뀌고, `window.go` 와 그 테스트만 `main` 패키지 그대로 프로젝트 맨 위로 간다. 복사한 뒤에는 그 앱의 파일이니 색과 부품을 마음대로 고친다. 쓰지 않는 부품과 모션 값 줄은 지우고, 지운 부품의 테스트도 함께 지운다.
+- 부품을 쓰는 방법은 `frame_test.go` 의 `TestAScreenBuiltFromPartsOnly` 가 보여 준다. 사이드바, 상단 막대, 지표 카드, 그래프, 도넛, 표를 부품만으로 한 화면에 조립하고 누르고 입력해 본다. 대시보드의 `shell.go` 와 `pages.go` 는 같은 부품을 부르며 앱 상태를 잇는 층이다.
+- 아이콘은 `icons/` 폴더(ISC 라이선스 파일 포함)와 `icons.go` 가 함께 간다. 라이선스 파일을 지우지 않는다(`TestIconsParseAndTheirLicenseTravelsWithThem` 가 지킨다). 쓰지 않는 아이콘은 파일과 변수를 함께 지운다.
+- `window.go` 는 `main.go` 에서 `mygo.NewWindow(dashboardWindow("My App", screen))` 로 쓴다. 숨긴 타이틀바는 `sidebar` 와 `topbar` 가 창 버튼 자리를 비우는 것과 짝이다. 일반 타이틀바 창을 쓸 앱은 이 파일을 쓰지 않아도 된다.
+- 서식이 쓰는 `mygo/i18n` 은 시작 템플릿의 구조 검사(`architecture_test.go`)가 뷰 계층에서 허용한다. 뷰가 쓸 수 있는 MyGo 패키지는 `ui` 와 그 하위, `i18n` 이다.
 - `dropdown` 의 강조 행과 `segmented` 의 선택 알약은 흰 글자를 `accent` 위에 올려 다크에서 3.84:1이다. 쓰는 앱은 `components.go` 의 두 곳의 `p.accent` 를 `p.accentFill` 로 바꾼다. 대시보드는 다크 화면이 달라져서 아직 바꾸지 않았다.
 - 원본은 `examples/dashboard` 이고 `assets/` 의 사본과 같아야 한다. `motion.go` 는 값 목록이라 앱이 쓰지 않는 줄을 지워도 되고, 남긴 줄이 `assets/motion.go` 와 같은지 본다. `scripts/check_snippets.py` 가 이를 확인하고, 이 문서의 색이 `palette.go` 에 있는지도 확인한다. `new_app.py` 와 `new_app.py --kit dashboard` 가 만든 앱이 둘 다 도는지도 확인한다.
-- 부품 가운데 대시보드 말고는 쓸 곳이 없는 것(`deltaPill`, `navItem`, 사이드바, 알림 벨)은 `examples/dashboard` 안에 두고 읽는 예시로 쓴다. 시작 템플릿의 `parts.go` 는 버튼과 스위치를 같은 값으로 만든 작은 본보기다.
 - 색을 더하면 `palette` 구조체, 두 팔레트 값, `channels()` 에 모두 넣는다. 하나라도 빠지면 `TestPaletteFadeCoversEveryColor` 가 실패한다. MyGo가 올라가 `Theme` 에 색 칸이 늘면 `themeColors` 에 넣으라고 `TestThemeFadeCoversEveryColorAndEndsExactly` 가 실패한다.
 
 ## 점검표

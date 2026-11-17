@@ -26,7 +26,24 @@ IMPORTS = {
     "chart.": "github.com/egoist/mygo/ui/chart",
 }
 HEX = re.compile(r"#[0-9A-Fa-f]{6}\b")
-KIT = ("motion.go", "palette.go", "palette_test.go", "targets_test.go", "components.go", "components_test.go")
+KIT = (
+    "motion.go",
+    "palette.go",
+    "palette_test.go",
+    "targets_test.go",
+    "components.go",
+    "components_test.go",
+    "charts.go",
+    "charts_test.go",
+    "frame.go",
+    "frame_test.go",
+    "formats.go",
+    "formats_test.go",
+    "icons.go",
+    "icons_test.go",
+    "window.go",
+    "window_test.go",
+)
 UNTRACKED = {"build", ".mygo", ".agents", ".DS_Store"}
 TOKEN = re.compile(r"`([^`\n]+)`")
 PACKAGE_NAME = re.compile(r"\b(ui|chart|mygo)\.([A-Z]\w*)")
@@ -171,6 +188,8 @@ def check_kit():
                     problems.append(f"examples/dashboard/motion.go has a line assets/motion.go does not: {line.strip()}")
         elif original != copy:
             problems.append(f"assets/{name} differs from examples/dashboard/{name}")
+    if read_tree(os.path.join(SKILL, "assets", "icons")) != read_tree(os.path.join(example, "icons")):
+        problems.append("assets/icons differs from examples/dashboard/icons")
     with open(os.path.join(SKILL, "references", "design.md")) as f:
         colors = re.search(r"^## 색$(.*?)^## 글자$", f.read(), re.M | re.S).group(1)
     with open(os.path.join(example, "palette.go")) as f:

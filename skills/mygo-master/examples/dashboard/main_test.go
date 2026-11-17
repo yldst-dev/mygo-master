@@ -224,7 +224,7 @@ func TestDropdownHighlightsOneRow(t *testing.T) {
 func TestDropdownClosesOnPressOutside(t *testing.T) {
 	a := testApp()
 	tt := ui.NewTester(a.view, 1440, 900)
-	if err := tt.Click("Account"); err != nil {
+	if err := tt.Click("Account menu"); err != nil {
 		t.Fatal(err)
 	}
 	if !a.accountOpen {
@@ -251,24 +251,6 @@ func same(a, b ui.Color) bool {
 func pixel(tt *ui.Tester, x, y float32) ui.Color {
 	c := tt.Image().RGBAAt(int(x), int(y))
 	return ui.RGB(c.R, c.G, c.B)
-}
-
-func TestShadeUpToStaysInTheData(t *testing.T) {
-	xs, ys := []float32{0, 1, 2}, []float32{0, 10, 20}
-	for _, c := range []struct {
-		at     float32
-		points int
-		lastX  float32
-		lastY  float32
-	}{{-0.001, 1, 0, 0}, {0, 1, 0, 0}, {1, 2, 1, 10}, {1.5, 3, 1.5, 15}, {2, 3, 2, 20}, {2.001, 3, 2, 20}} {
-		sx, sy := shadeUpTo(xs, ys, c.at)
-		if len(sx) != c.points || sx[len(sx)-1] != c.lastX || sy[len(sy)-1] != c.lastY {
-			t.Errorf("at %v: %v %v", c.at, sx, sy)
-		}
-	}
-	if xs[2] != 2 || ys[2] != 20 {
-		t.Errorf("the shade wrote over the data: %v %v", xs, ys)
-	}
 }
 
 func TestThemeFadeMovesTogether(t *testing.T) {
@@ -317,7 +299,7 @@ func TestMonthPillSlidesUnderTheLabels(t *testing.T) {
 }
 
 func TestButtonsShowHoverAndRest(t *testing.T) {
-	for _, label := range []string{"Notifications", "Account", "Account menu"} {
+	for _, label := range []string{"Notifications", "Account menu"} {
 		a := testApp()
 		tt := ui.NewTester(a.view, 1440, 900)
 		tt.Advance(time.Second)
@@ -517,7 +499,10 @@ func TestKeysWalkTheChartsAndLeaveNoTip(t *testing.T) {
 	a := testApp()
 	tt := ui.NewTester(a.view, 1440, 900)
 	tt.Advance(time.Second)
-	for range 11 {
+	for presses := 0; !tt.Focused("Total Revenue trend"); presses++ {
+		if presses == 20 {
+			t.Fatal("twenty tabs do not reach the first trend")
+		}
 		tt.Key(0, ui.KeyTab)
 	}
 	tt.Key(0, ui.KeyRight)
@@ -621,11 +606,11 @@ func TestEveryTargetIsLargeEnough(t *testing.T) {
 	}{
 		{"at rest", func(*ui.Tester) error { return nil }, []string{
 			"Analytics", "Orders", "Customers", "Settings",
-			"Notifications", "Dark mode", "Account", "Account menu", "View All",
+			"Notifications", "Dark mode", "Account menu", "View All",
 			"Jan", "Feb", "Mar", "Apr", "May", "Jun", "#ORD-10051",
 		}},
 		{"alerts open", func(tt *ui.Tester) error { return tt.Click("Notifications") }, menuRows},
-		{"account open", func(tt *ui.Tester) error { return tt.Click("Account") }, []string{"Quit"}},
+		{"account open", func(tt *ui.Tester) error { return tt.Click("Account menu") }, []string{"Quit"}},
 		{"search typed", func(tt *ui.Tester) error {
 			if err := tt.Click("Search"); err != nil {
 				return err

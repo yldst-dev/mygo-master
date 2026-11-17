@@ -35,7 +35,7 @@ func TestDependenciesPointInward(t *testing.T) {
 		"domain":  {},
 		"usecase": {internal + "domain"},
 		"adapter": {internal + "domain", internal + "usecase", mygoModule},
-		"view":    {internal + "domain", internal + "usecase", mygoModule + "/ui"},
+		"view":    {internal + "domain", internal + "usecase", mygoModule + "/ui", mygoModule + "/i18n"},
 	}
 	allowed := func(layer, path string) bool {
 		if !strings.HasPrefix(path, module+"/") && !strings.Contains(strings.Split(path, "/")[0], ".") {

@@ -2,20 +2,13 @@ package main
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/chart"
 )
 
 const (
 	compactWidth = 1394
 	monthWidth   = 49.66
-	donutRadius  = 91
-	donutHole    = 54
-	donutGrowth  = 5
-	donutSink    = 3
-	donutFade    = 0.8
 )
 
 func (a *app) dashboardPage(c *ui.Context) {
@@ -27,7 +20,7 @@ func (a *app) dashboardPage(c *ui.Context) {
 	}
 	ui.Grid(c).Columns(columns).GapX(17).GapY(17).Children(func() {
 		for _, m := range metrics {
-			a.metricCard(c, m)
+			metricCard(c, p, a.metricView(m))
 		}
 	})
 	if width < compactWidth {
@@ -44,15 +37,7 @@ func (a *app) dashboardPage(c *ui.Context) {
 	card(c, p).Padding(15, 16, 20, 22).Gap(13).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).Children(func() {
 			cardTitle(c, "Recent Orders")
-			view := pressable(ui.ButtonBase(c), 0.96).Label("View All").Height(30).Padding(0, 14).Gap(5).Radius(8).Border(1, p.fieldLine)
-			var nudge ui.Pose
-			if view.Hovered() {
-				nudge.X = 3
-			}
-			view.Background(p.field.Mix(p.navActive, progress(view, "hover", view.Hovered(), fadeMotion))).Children(func() {
-				ui.Text(c, "View All").FontSize(14).FontWeight(600).TextColor(p.accentInk)
-				ui.Icon(c, arrowIcon).Size(15, 15).TextColor(p.accentInk).AnimatePose(nudge, quickMotion)
-			})
+			view := moreButton(c, p, "View All", arrowIcon)
 			if view.Clicked() {
 				a.page, a.query = pageOrders, ""
 			}
@@ -65,61 +50,20 @@ func (a *app) dashboardPage(c *ui.Context) {
 	})
 }
 
-func (a *app) metricCard(c *ui.Context, m metric) {
-	p := a.colors()
+func (a *app) metricView(m metric) metricView {
 	value, previous := m.at(a.month)
-	card(c, p).Height(140).Padding(17, 14, 0, 22).Children(func() {
-		ui.Row(c).Gap(18).Children(func() {
-			ui.Icon(c, m.icon).Size(24, 24).TextColor(p.body)
-			ui.Text(c, m.label).FontSize(14.5).FontWeight(500).TextColor(p.body).NoWrap()
-		})
-		ui.Box(c).ClipY().Margin(9, 0, 0, 0).Children(func() {
-			ui.Text(c, m.format(value)).FontSize(29.5).Bold().NoWrap().ContentTransition(rollDigits)
-		})
-		ui.Row(c).Gap(7).Margin(11, 0, 0, 0).Children(func() {
-			deltaPill(c, p, (value-previous)/previous*100)
-			ui.Text(c, "vs. last month").FontSize(12.5).TextColor(p.muted).NoWrap().Transition(followFit)
-		})
-		sparkline(c, p, m).Label(m.label+" trend").Absolute().Top(53).Right(14).Size(85, 45)
-	})
-}
-
-func deltaPill(c *ui.Context, p *palette, delta float64) {
-	icon, sign := arrowUpIcon, "+"
-	if delta < 0 {
-		icon, sign = arrowDownIcon, "−"
+	trend := m.trend()
+	return metricView{
+		label:    m.label,
+		icon:     m.icon,
+		value:    m.format(value),
+		against:  "vs. last month",
+		delta:    (value - previous) / previous * 100,
+		up:       arrowUpIcon,
+		down:     arrowDownIcon,
+		trend:    trend,
+		describe: func(i int) string { return trendMonths[i] + ": " + m.format(trend[i]) },
 	}
-	pill := ui.Row(c).Height(24).Padding(0, 9, 0, 7).Gap(4).Radius(12).ClipY().Transition(growFit)
-	falling := progress(pill, "falling", delta < 0, fadeMotion)
-	ink := p.good.ink.Mix(p.bad.ink, falling)
-	pill.Background(p.good.background.Mix(p.bad.background, falling)).Children(func() {
-		ui.Icon(c, icon).Size(14, 14).TextColor(ink).ContentTransition(ui.ContentTransition{})
-		ui.Text(c, fmt.Sprintf("%s%.1f%%", sign, math.Abs(delta))).FontSize(12.5).FontWeight(600).TextColor(ink).NoWrap().ContentTransition(rollDigits)
-	})
-}
-
-func sparkline(c *ui.Context, p *palette, m metric) ui.Element {
-	values := m.trend()
-	lo, hi := chart.Extent(values...)
-	scale := chart.NewLinear(lo, hi)
-	xs, ys := make([]float32, len(values)), make([]float32, len(values))
-	for i, v := range values {
-		xs[i] = float32(i) / float32(len(values)-1)
-		ys[i] = 0.2 + 0.75*scale.At(v)
-	}
-	spark := ui.Box(c).Radius(6)
-	describe := func(i int) string { return trendMonths[i] + ": " + m.format(values[i]) }
-	selected := pickPoint(c, spark, xs, describe)
-	lit := progress(spark, "lit", selected >= 0, fadeMotion)
-	return spark.Draw(func(pt *ui.Painter, r ui.Rect) {
-		pt.FillPathGradient(chart.Area(r, xs, nil, ys, chart.CurveMonotone), ui.LinearGradient{From: p.accent.Alpha(0.14 + 0.1*lit), To: p.accent.Alpha(0), Angle: 180})
-		pt.StrokePath(chart.Line(r, xs, ys, chart.CurveMonotone), 2+0.5*lit, p.accent)
-	}).Children(func() {
-		if selected >= 0 {
-			chart.Point(c, xs[selected], ys[selected], 9, 9).Radius(4.5).Background(p.accent).Border(1.5, p.card).Transition(markMotion)
-			chartTip(c, p, spark.Bounds().W, xs[selected], 1, describe(selected))
-		}
-	})
 }
 
 func (a *app) revenueCard(c *ui.Context) ui.Element {
@@ -129,76 +73,17 @@ func (a *app) revenueCard(c *ui.Context) ui.Element {
 			cardTitle(c, "Revenue (Monthly)")
 			segmented(c, p, "month", "Month", &a.month, months, monthWidth)
 		})
-		a.revenueChart(c)
-	})
-}
-
-func (a *app) revenueChart(c *ui.Context) {
-	p := a.colors()
-	values := metrics[0].monthly[:]
-	scale := chart.NewLinear(0, 150000)
-	left := make([]chart.Tick, 7)
-	for i := range left {
-		v := 25000 * float64(i)
-		label := "$0"
-		if v > 0 {
-			label = fmt.Sprintf("$%.0fK", v/1000)
-		}
-		left[i] = chart.Tick{At: scale.At(v), Value: v, Label: label}
-	}
-	xs, ys := make([]float32, len(values)), make([]float32, len(values))
-	bottom := make([]chart.Tick, len(values))
-	for i, v := range values {
-		xs[i] = 0.025 + 0.1872*float32(i)
-		ys[i] = scale.At(v)
-		bottom[i] = chart.Tick{At: xs[i], Label: months[i]}
-	}
-	label := func(_ chart.Side, tick chart.Tick) {
-		ui.Text(c, tick.Label).NoWrap().FontSize(14).TextColor(p.muted)
-	}
-	chart.Plot(c, chart.Axes{Left: left, Bottom: bottom, Label: label}, func(area ui.Element) {
-		shadedXs, shadedYs := shadeUpTo(xs, ys, area.AnimateTo("shade", float32(a.month), pillMotion))
-		area.Label("Monthly revenue").Draw(func(pt *ui.Painter, r ui.Rect) {
-			for _, tick := range left {
-				color := p.grid
-				if tick.Value == 0 {
-					color = p.axis
-				}
-				pt.Line(r.X, chart.Y(r, tick.At), r.X+r.W, chart.Y(r, tick.At), 1, color)
-			}
-			pt.Line(r.X, r.Y, r.X, r.Y+r.H, 1, p.grid)
-			pt.FillPathGradient(chart.Area(r, shadedXs, nil, shadedYs, chart.CurveLinear), ui.LinearGradient{
-				Angle: 180,
-				Stops: []ui.GradientStop{{Color: p.areaStrong, At: 0}, {Color: p.areaStrong, At: 0.55}, {Color: p.areaFaint, At: 1}},
-			})
-			pt.StrokePath(chart.Line(r, xs, ys, chart.CurveLinear), 2.5, p.accent)
+		areaChart(c, p, areaChartView{
+			label:     "Monthly revenue",
+			names:     months,
+			values:    metrics[0].monthly[:],
+			ceiling:   150000,
+			step:      25000,
+			axisLabel: axisDollars,
+			shaded:    a.month,
+			describe:  func(i int) string { return months[i] + ": " + thousands(metrics[0].monthly[i]) },
 		})
-		describe := func(i int) string { return months[i] + ": " + thousands(values[i]) }
-		selected := pickPoint(c, area, xs, describe)
-		if selected >= 0 {
-			chart.RuleX(c.Key("guide"), xs[selected], 1).Background(p.axis).Transition(markMotion)
-		}
-		for i := range values {
-			dot := chart.Point(c.Key(i), xs[i], ys[i], 10, 10).Radius(5).Border(2, p.accent)
-			var pose ui.Pose
-			if i == selected {
-				pose.Scale = 1.3
-			}
-			dot.Background(p.card.Mix(p.accent, progress(dot, "filled", i == selected, quickMotion))).AnimatePose(pose, quickMotion)
-		}
-		if selected >= 0 {
-			chartTip(c, p, area.Bounds().W, xs[selected], ys[selected], describe(selected))
-		}
-	}).Grow(1).Margin(0, 3, 0, 3).GapX(13).GapY(6)
-}
-
-func shadeUpTo(xs, ys []float32, at float32) ([]float32, []float32) {
-	n := min(int(at), len(xs)-1)
-	k := at - float32(n)
-	if k <= 0 || n == len(xs)-1 {
-		return xs[:n+1], ys[:n+1]
-	}
-	return append(xs[:n+1:n+1], xs[n]+(xs[n+1]-xs[n])*k), append(ys[:n+1:n+1], ys[n]+(ys[n+1]-ys[n])*k)
+	})
 }
 
 func (a *app) categoryCard(c *ui.Context) ui.Element {
@@ -207,56 +92,13 @@ func (a *app) categoryCard(c *ui.Context) ui.Element {
 	total, _ := metrics[0].at(a.month)
 	return card(c, p).Padding(16, 19, 0, 20).Gap(23).Children(func() {
 		cardTitle(c, "Sales by Category")
-		ui.Row(c).Gap(23).Children(func() {
-			donut := ui.Box(c).Size(2*donutRadius, 2*donutRadius).Shrink(0).Center().Label("Sales by category")
-			shown := make([]float64, len(shares))
-			for i, share := range shares {
-				shown[i] = float64(donut.AnimateTo(i, float32(share), pillMotion))
-			}
-			slices := chart.Pie(shown, 0.03)
-			active := -1
-			if x, y, over := donut.PointerPosition(); over && donut.Hovered() {
-				if i, ok := chart.SliceAt(slices, x-donutRadius, y-donutRadius, donutHole, donutRadius+donutGrowth); ok {
-					active = i
-				}
-			}
-			lit := make([]float32, len(slices))
-			var dim float32
-			ui.Column(c).Grow(1).Gap(15).Margin(0, 0, 10, 0).Children(func() {
-				rows := make([]ui.Element, len(categories))
-				for i, name := range categories {
-					rows[i] = ui.Row(c).Height(20).Gap(10).ClipY().Focusable().Label(name)
-					if rows[i].Hovered() || rows[i].FocusVisible() {
-						active = i
-					}
-				}
-				dim = progress(donut, "dim", active >= 0, fadeMotion)
-				for i, name := range categories {
-					lit[i] = progress(donut, name, i == active, fadeMotion)
-					rows[i].TextColor(p.ink.Mix(p.muted, dim-lit[i])).Children(func() {
-						ui.Box(c).Size(12, 12).Radius(6).Background(p.slices[i].Mix(p.card, donutFade*(dim-lit[i])))
-						ui.Text(c, name).FontSize(13.5).Grow(1)
-						ui.Text(c, fmt.Sprintf("%.0f%%", shares[i])).FontSize(13.5).ContentTransition(rollDigits)
-					})
-				}
-			})
-			donut.Draw(func(pt *ui.Painter, r ui.Rect) {
-				cx, cy := r.X+r.W/2, r.Y+r.H/2
-				for i, slice := range slices {
-					pt.FillPath(chart.Sector(cx, cy, donutHole-donutSink*lit[i], donutRadius+donutGrowth*lit[i], slice), p.slices[i].Mix(p.card, donutFade*(dim-lit[i])))
-				}
-			}).Children(func() {
-				ui.Box(c).ClipY().Children(func() {
-					ui.Text(c, thousands(total)).FontSize(21).Bold().ContentTransition(rollDigits)
-				})
-				ui.Text(c, "Total").FontSize(14).TextColor(p.muted).Margin(3, 0, 0, 0)
-			})
-			ui.Box(c).Absolute().Left(0).Top(0).Size(2*donutRadius, 2*donutRadius).PassThrough().Children(func() {
-				if active >= 0 {
-					x, y := chart.Polar(0.5, 0.5, 0.4, slices[active].Mid())
-					chartTip(c, p, 2*donutRadius, x, 1-y, categories[active]+": "+thousands(total*shares[active]/100))
-				}
-			})
+		donut(c, p, donutView{
+			label:    "Sales by category",
+			names:    categories,
+			shares:   shares,
+			center:   thousands(total),
+			caption:  "Total",
+			describe: func(i int) string { return categories[i] + ": " + thousands(total*shares[i]/100) },
 		})
 	})
 }
@@ -268,15 +110,7 @@ func (a *app) ordersTable(c *ui.Context, rows []order) {
 		o := rows[row]
 		switch col {
 		case 0:
-			open := pressable(ui.ButtonBase(c), 0.97).Label(o.id).FillHeight().Radius(4).Cursor(ui.CursorPointer)
-			line := progress(open, "line", open.Hovered(), quickMotion)
-			open.Children(func() {
-				ui.Box(c).Draw(func(pt *ui.Painter, r ui.Rect) {
-					pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W * line, H: 1}, p.accentInk, 0)
-				}).Children(func() {
-					ui.Text(c, o.id).FontSize(14.5).TextColor(p.accentInk)
-				})
-			})
+			open := textLink(c, p, o.id)
 			if open.Clicked() {
 				a.page, a.query = pageOrders, o.id
 			}

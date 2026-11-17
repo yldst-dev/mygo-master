@@ -25,6 +25,15 @@ var (
 	tipDigits  = ui.ContentTransition{Numeric: true, Animation: &fadeMotion}
 )
 
+var bellRing = []ui.Keyframe{
+	{Value: 0},
+	{At: 70 * time.Millisecond, Value: 14},
+	{At: 150 * time.Millisecond, Value: -10},
+	{At: 230 * time.Millisecond, Value: 6},
+	{At: 300 * time.Millisecond, Value: -3},
+	{At: 360 * time.Millisecond, Value: 0},
+}
+
 func progress(e ui.Element, key string, on bool, motion ui.Animation) float32 {
 	target := float32(0)
 	if on {

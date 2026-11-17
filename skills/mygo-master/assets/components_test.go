@@ -1,22 +1,43 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/chart"
 )
 
-var kitArrow = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="m6 9 6 6 6-6"/></svg>`))
-
-func kitTester(build func(c *ui.Context, p *palette)) *ui.Tester {
+func kitScreen(width, height int, build func(c *ui.Context, p *palette)) *ui.Tester {
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(restThemes[0])
 		ui.Column(c).Fill().Padding(24).Gap(16).Children(func() { build(c, &lightPalette) })
-	}, 640, 480)
+	}, width, height)
 	tt.Advance(time.Second)
 	return tt
+}
+
+func kitTester(build func(c *ui.Context, p *palette)) *ui.Tester {
+	return kitScreen(640, 480, build)
+}
+
+func kitPixel(tt *ui.Tester, x, y float32) ui.Color {
+	c := tt.Image().RGBAAt(int(x), int(y))
+	return ui.RGB(c.R, c.G, c.B)
+}
+
+func kitSame(a, b ui.Color) bool {
+	return a.R == b.R && a.G == b.G && a.B == b.B
+}
+
+func kitHover(t *testing.T, tt *ui.Tester, label string, fx, fy float32) {
+	t.Helper()
+	r, ok := tt.Find(label)
+	if !ok {
+		t.Fatalf("no %q", label)
+	}
+	tt.Move(r.X+r.W*fx, r.Y+r.H*fy)
 }
 
 func TestCardTitleAndStatusPillShowTheirText(t *testing.T) {
@@ -38,7 +59,7 @@ func TestDropdownOpensFromTheKeysChoosesAndGivesTheFocusBack(t *testing.T) {
 		button := menuButton(c, p, "Sort", &open).Height(40).Padding(0, 12).Gap(8).Radius(10)
 		button.Children(func() {
 			ui.Text(c, "Sort")
-			chevron(c, p, kitArrow, open)
+			chevron(c, p, chevronIcon, open)
 		})
 		list := make([]menuEntry, len(entries))
 		for i, name := range entries {
@@ -117,7 +138,7 @@ func TestTableShowsItsRowsAndTheEmptyMessage(t *testing.T) {
 func TestSearchFieldTypesClearsAndKeepsTheClearButtonLarge(t *testing.T) {
 	query := ""
 	tt := kitTester(func(c *ui.Context, p *palette) {
-		searchField(c, p, &query, kitArrow, "Search here")
+		searchField(c, p, &query, searchIcon, "Search here")
 	})
 	if err := tt.Click("Search"); err != nil {
 		t.Fatal(err)
@@ -142,7 +163,7 @@ func TestSearchFieldTypesClearsAndKeepsTheClearButtonLarge(t *testing.T) {
 func TestThemeSwitchTurnsAndTellsTheCaller(t *testing.T) {
 	dark, told := false, 0
 	tt := kitTester(func(c *ui.Context, p *palette) {
-		themeSwitch(c, p, &dark, "Dark mode", kitArrow, kitArrow, func() { told++ })
+		themeSwitch(c, p, &dark, "Dark mode", sunIcon, moonIcon, func() { told++ })
 	})
 	if small := smallTargets(tt, 28, "Dark mode"); len(small) > 0 {
 		t.Errorf("the switch is under 28 DIP: %v", small)
@@ -156,57 +177,72 @@ func TestThemeSwitchTurnsAndTellsTheCaller(t *testing.T) {
 	}
 }
 
-func TestChartTipFollowsThePointerAndLeavesNoTip(t *testing.T) {
-	labels := []string{"A: 1", "B: 2", "C: 3"}
-	xs, ys := []float32{0.1, 0.5, 0.9}, []float32{0.2, 0.5, 0.8}
-	tt := kitTester(func(c *ui.Context, p *palette) {
-		chart.Plot(c, chart.Axes{}, func(area ui.Element) {
-			selected := pickPoint(c, area, xs, func(i int) string { return labels[i] })
-			if selected >= 0 {
-				chartTip(c, p, area.Bounds().W, xs[selected], ys[selected], labels[selected])
-			}
-		}).Label("Sales").Height(200)
+func TestMetricCardShowsItsFigureAndDeltaAndFollowsThePointer(t *testing.T) {
+	value, delta := "$128,430", 12.4
+	trend := []float64{1, 3, 2, 5, 4}
+	tt := kitScreen(400, 300, func(c *ui.Context, p *palette) {
+		metricCard(c, p, metricView{
+			label: "Revenue", icon: sunIcon, value: value, against: "vs. last month", delta: delta,
+			up: arrowUpIcon, down: arrowDownIcon, trend: trend,
+			describe: func(i int) string { return fmt.Sprintf("m%d", i) },
+		}).Width(280)
 	})
-	r, ok := tt.Find("Sales")
-	if !ok {
-		t.Fatal("no chart")
+	for _, want := range []string{"Revenue", "$128,430", "+12.4%", "vs. last month"} {
+		if !tt.HasText(want) {
+			t.Errorf("missing %q in %q", want, tt.Texts())
+		}
 	}
-	tt.Move(r.X+r.W*0.5, r.Y+r.H*0.5)
-	if !tt.HasText("B: 2") {
-		t.Errorf("no tip under the pointer: %q", tt.Texts())
+	kitHover(t, tt, "Revenue trend", 0.99, 0.5)
+	if !tt.HasText("m4") {
+		t.Errorf("the trend shows no tip under the pointer: %q", tt.Texts())
 	}
-	tt.Move(r.X+r.W*0.9, r.Y+r.H*0.5)
+	tt.Move(380, 280)
+	value, delta = "$127,000", -0.9
+	tt.Frame()
 	tt.Advance(time.Second)
-	if !tt.HasText("C: 3") || tt.HasText("B: 2") || tt.FramePending() {
-		t.Errorf("the tip does not follow: %q, pending %v", tt.Texts(), tt.FramePending())
-	}
-	tt.Move(r.X+r.W+200, r.Y-100)
-	tt.Advance(time.Second)
-	if tt.HasText("C: 3") || tt.FramePending() {
-		t.Errorf("a tip stays after the pointer left: %q", tt.Texts())
+	if !tt.HasText("$127,000") || !tt.HasText("−0.9%") || tt.HasText("+12.4%") || tt.FramePending() {
+		t.Errorf("the card does not follow its figures: %q, pending %v", tt.Texts(), tt.FramePending())
 	}
 }
 
-func TestChartTipLeavesWhenTheFocusLeaves(t *testing.T) {
-	labels := []string{"A: 1", "B: 2", "C: 3"}
-	xs, ys := []float32{0.1, 0.5, 0.9}, []float32{0.2, 0.5, 0.8}
+func TestMoreButtonAndTextLinkAnswerClicksAndStayLarge(t *testing.T) {
+	more, opened := 0, ""
 	tt := kitTester(func(c *ui.Context, p *palette) {
-		chart.Plot(c, chart.Axes{}, func(area ui.Element) {
-			selected := pickPoint(c, area, xs, func(i int) string { return labels[i] })
-			if selected >= 0 {
-				chartTip(c, p, area.Bounds().W, xs[selected], ys[selected], labels[selected])
+		if moreButton(c, p, "View All", arrowIcon).Clicked() {
+			more++
+		}
+		table(c, p, "Orders", "Nothing here.", []column{{"ID", 1}}, 1, func(row, col int) {
+			if textLink(c, p, "#A-1").Clicked() {
+				opened = "#A-1"
 			}
-		}).Label("Sales").Height(200)
-		ui.ButtonBase(c).Label("Next").Height(30).Padding(0, 12).Children(func() { ui.Text(c, "Next") })
+		})
 	})
-	tt.Key(0, ui.KeyTab)
-	tt.Key(0, ui.KeyRight)
-	if !tt.HasText("A: 1") {
-		t.Fatalf("the keys do not walk the chart: %q", tt.Texts())
+	if small := smallTargets(tt, 28, "View All", "#A-1"); len(small) > 0 {
+		t.Errorf("targets under 28 DIP: %v", small)
 	}
-	tt.Key(0, ui.KeyTab)
+	if err := tt.Click("View All"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("#A-1"); err != nil {
+		t.Fatal(err)
+	}
 	tt.Advance(time.Second)
-	if !tt.Focused("Next") || tt.HasText("A: 1") {
-		t.Errorf("focus on Next %v, tip left over %v", tt.Focused("Next"), tt.HasText("A: 1"))
+	if more != 1 || opened != "#A-1" || tt.FramePending() {
+		t.Errorf("more %d, opened %q, pending %v", more, opened, tt.FramePending())
+	}
+}
+
+func TestChevronTurnsOverWhenTheMenuIsOpen(t *testing.T) {
+	open := false
+	tt := kitTester(func(c *ui.Context, p *palette) {
+		chevron(c, p, chevronIcon, open)
+	})
+	shape := ui.Rect{X: 24, Y: 24, W: 18, H: 18}
+	closed := kitCrop(tt, shape)
+	open = true
+	tt.Frame()
+	tt.Advance(time.Second)
+	if bytes.Equal(closed, kitCrop(tt, shape)) || tt.FramePending() {
+		t.Errorf("the chevron does not turn: pending %v", tt.FramePending())
 	}
 }

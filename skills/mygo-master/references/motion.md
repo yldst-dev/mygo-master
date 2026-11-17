@@ -588,18 +588,13 @@ func TestPageHostStartsEachPageAtTheTop(t *testing.T) {
 
 ### 일회성 벨 울림
 
-`Keyframes` 는 처음 빌드될 때도 재생되므로 `Run` 이 0일 때는 걸지 않는다.
+`Keyframes` 는 처음 빌드될 때도 재생되므로 `Run` 이 0일 때는 걸지 않는다. 키프레임 `bellRing` 은 `motion.go` 에 들어 있고, `--kit dashboard` 로 받는 `frame.go` 의 `notificationBell` 이 이 레시피를 그대로 쓴다. 각도는 시간에 따라 아래와 같다.
+
+```text
+0ms 0도, 70ms 14도, 150ms -10도, 230ms 6도, 300ms -3도, 360ms 0도
+```
 
 ```go
-var bellRing = []ui.Keyframe{
-	{Value: 0},
-	{At: 70 * time.Millisecond, Value: 14},
-	{At: 150 * time.Millisecond, Value: -10},
-	{At: 230 * time.Millisecond, Value: 6},
-	{At: 300 * time.Millisecond, Value: -3},
-	{At: 360 * time.Millisecond, Value: 0},
-}
-
 func ringingIcon(c *ui.Context, icon *ui.SVG, rings uint64) {
 	bell := ui.Icon(c, icon).Size(26, 26).TransformOrigin(0.5, 0.1)
 	if rings > 0 {
@@ -632,7 +627,7 @@ func TestRingingIconWaitsThenRingsOnce(t *testing.T) {
 
 ### 그래프 호버
 
-세 가지 그래프에 모두 쓰는 공통 부품이다. 팔레트를 받는 형태가 `assets/components.go` 의 `pickPoint` 와 `chartTip` 이다. `chart.Select` 는 포인터가 떠날 때만 선택을 지우므로 포커스가 빠져나갈 때도 지우도록 감싼다. 말풍선에는 항상 `IgnoreInput(true)` 를 건다. 말풍선이 호버 대상의 바깥에 있으면(도넛 레시피) 커서 아래로 왔을 때 호버를 빼앗아 사라졌다 나타나기를 반복한다. `PassThrough` 는 그 요소에만 적용되고 자식에 물려지지 않아 이 문제를 막지 못한다. 말풍선이 그래프 영역의 자식이면 영역의 호버가 유지되어 깜빡이지 않으므로, 이때 `IgnoreInput` 을 없애는 변이는 `MISSED` 가 정상이다. 위치는 실제 글자 폭과 말풍선 높이로 그래프 안에 가둔다. 막대처럼 위까지 솟는 값에서는 위쪽 가두기가 없으면 제목이나 버튼을 가린다. 색은 내장 말풍선처럼 테마의 `Inverse` 를 먼저 쓴다.
+세 가지 그래프에 모두 쓰는 공통 부품이다. 팔레트를 받는 형태가 `assets/charts.go` 의 `pickPoint` 와 `chartTip` 이다. `chart.Select` 는 포인터가 떠날 때만 선택을 지우므로 포커스가 빠져나갈 때도 지우도록 감싼다. 말풍선에는 항상 `IgnoreInput(true)` 를 건다. 말풍선이 호버 대상의 바깥에 있으면(도넛 레시피) 커서 아래로 왔을 때 호버를 빼앗아 사라졌다 나타나기를 반복한다. `PassThrough` 는 그 요소에만 적용되고 자식에 물려지지 않아 이 문제를 막지 못한다. 말풍선이 그래프 영역의 자식이면 영역의 호버가 유지되어 깜빡이지 않으므로, 이때 `IgnoreInput` 을 없애는 변이는 `MISSED` 가 정상이다. 위치는 실제 글자 폭과 말풍선 높이로 그래프 안에 가둔다. 막대처럼 위까지 솟는 값에서는 위쪽 가두기가 없으면 제목이나 버튼을 가린다. 색은 내장 말풍선처럼 테마의 `Inverse` 를 먼저 쓴다.
 
 ```go
 const (

@@ -32,22 +32,26 @@ go tool mygo build -skip-dmg
 | Customers | Orders summed up per customer |
 | Settings | The dark mode switch |
 
-The search field in the top bar filters by order ID, customer, status and date. The notification bell and the account menu open and close from the keyboard too.
+The search field in the top bar filters by order ID, customer, status and date. The notification bell and the account menu at the bottom of the sidebar open and close from the keyboard too.
 
 ## Files
 
 | File | Role |
 |---|---|
-| `main.go` | Window options and the theme hookup |
-| `shell.go` | App state, sidebar, top bar, notification bell |
-| `pages.go` | Metrics and badges, charts, the donut, the 5 pages |
-| `components.go` | Parts that are not tied to app state: card, status pill, table, dropdown menu, segmented control, search field, theme switch, chart tooltip. `new_app.py --kit dashboard` copies them into a new app |
-| `data.go` | Sample data, number formats, order filtering and customer summaries |
+| `main.go` | Creates the app and opens the window |
+| `shell.go` | App state, the navigation, the account menu and alert items: a thin layer that ties the parts to app state |
+| `pages.go` | The 5 pages. They hand sample data to the parts |
+| `components.go` | Parts that are not tied to app state: card, status pill, table, dropdown menu, segmented control, search field, theme switch, metric card with its delta badge, button and link |
+| `charts.go` | Sparkline, monthly area chart, donut, chart tooltip |
+| `frame.go` | Sidebar (sliding nav pill, account menu), top bar, notification bell, page frame |
+| `formats.go` | Money, rate and thousands-separator formats |
+| `window.go` | Window options with a hidden title bar, a default size and a minimum size |
+| `data.go` | Sample data, order filtering and customer summaries |
 | `palette.go` | Color roles (light and dark) and the theme fade. The same file as in the skill's starter |
-| `motion.go` | Motion value names, `progress`, `pressable`. The lines this app uses from the starter's list of values |
-| `icons.go`, `icons/` | [Lucide](https://lucide.dev) icons (ISC License) |
+| `motion.go` | Motion value names, the bell keyframes, `progress`, `pressable`. The lines this app uses from the starter's list of values |
+| `icons.go`, `icons/` | 15 [Lucide](https://lucide.dev) icons (ISC License) |
 | `main_test.go` | Tests of the whole app, run without a window |
-| `palette_test.go`, `components_test.go`, `targets_test.go` | Tests of the palette and the parts on their own. A new app gets them too |
+| `palette_test.go`, `components_test.go`, `charts_test.go`, `frame_test.go`, `formats_test.go`, `icons_test.go`, `window_test.go`, `targets_test.go` | Tests of the palette and the parts on their own, including one that assembles a whole screen from the parts |
 | `mygo.json`, `resources/` | App name and identifier, icon |
 
 It is a single package. The app predates the clean architecture rule, so it has no layers. For the structure of a new app, see the skill's starter.
@@ -66,7 +70,7 @@ The reasons behind the colors, type, spacing, corners, target sizes and motion v
 
 ## Tests
 
-`go test ./...` runs without a window, through `ui.Tester`. It checks the figures and texts on screen, the month pill, search, navigation, dark mode, the keys in menus, hover on the charts and the donut, that a tooltip stays inside its chart, that motion ends, less motion, target sizes, that the fade moves every palette color together, and text contrast. The parts (card, menu, segmented control, table, search field, switch, tooltip) are also tested on their own, in a tiny view made of nothing else.
+`go test ./...` runs without a window, through `ui.Tester`. It checks the figures and texts on screen, the month pill, search, navigation, dark mode, the keys in menus, hover on the charts and the donut, that a tooltip stays inside its chart, that motion ends, less motion, target sizes, that the fade moves every palette color together, and text contrast. The parts (card, menu, segmented control, table, search field, switch, metric card, charts, donut, sidebar, top bar, notification bell, page frame, window options) are also tested on their own, in a tiny view made of nothing else, and one test assembles a whole screen from the parts.
 
 ## Known gaps
 

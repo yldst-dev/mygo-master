@@ -94,7 +94,7 @@ The dashboard was built before the clean architecture rule went into the skill, 
 
 The skill carries a copy of this source as its design example ([`skills/mygo-master/examples/dashboard`](skills/mygo-master/examples/dashboard)). `check_snippets.py` checks that the copy matches the original.
 
-The design system's code has three layers: values, motion and components. `palette.go` (color roles, light and dark, the theme fade), `motion.go` (motion values, `progress`, `pressable`) and `components.go` (card, status pill, table, dropdown menu, segmented control, search field, theme switch, chart tooltip) are the files the dashboard uses, shipped as they are in the skill. A new app gets the first two copied into `internal/view/`, and `new_app.py --kit dashboard` copies the components too. The components are not tied to app state: they take the palette and only icons, state pointers, callbacks and texts, and a test that builds a tiny view from the components alone goes with them.
+The design system's code has three layers: values, motion and components. `palette.go` (color roles, light and dark, the theme fade) and `motion.go` (motion values, the bell keyframes, `progress`, `pressable`) are the first two. The components are `components.go` (card, status pill, table, dropdown menu, segmented control, search field, theme switch, metric card, links), `charts.go` (sparkline, area chart, donut, chart tooltip), `frame.go` (sidebar, top bar, notification bell, page frame), `formats.go` (money and rate formats), `icons.go` with `icons/` (15 Lucide icons and their ISC License) and `window.go` (window options with a hidden title bar). All are the files the dashboard uses, shipped as they are in the skill. A new app gets the first two copied into `internal/view/`, and `new_app.py --kit dashboard` copies all the components and the window options too. The components are not tied to app state: they take the palette and only icons, state pointers, callbacks and texts, and tests go with them, including one that assembles a whole screen from the components alone.
 
 The dashboard also had spots below 28 DIP (menu rows 27.3 tall, the clear button in the search field 21×21, the order ID links in the table 17.1 tall). All are fixed and a size test keeps them so. In dark mode, white text on the month pill and the highlighted menu row (3.84:1) and in light mode the avatar initials (4.27:1) fall short of 4.5:1; fixing them changes the look, so they were left.
 
@@ -118,8 +118,8 @@ This compiles and tests the Go code in the documents against the latest MyGo, ch
 
 ## What was checked
 
-- Checked on macOS 27.2 with Go 1.27.3 and MyGo v0.9.1: the check script, the tests, real windows and the release build all ran on v0.9.1.
-- The skill and the dashboard were built on v0.7.4. The same screens shot on v0.7.4 and on v0.9.1 matched except for a few dozen pixels off by 1/255 on resting screens, and motion ended at the same times.
+- Checked on macOS 27.2 with Go 1.27.3 and MyGo v0.9.2: the check script, the dashboard tests, and the dashboard's real window and release build ran on v0.9.2. The real windows and release builds of the two starter variants were checked on v0.9.1; on v0.9.2 they were only generated, compiled and tested.
+- The skill and the dashboard were built on v0.7.4. The same screens shot on v0.7.4 and on v0.9.1 matched except for a few dozen pixels off by 1/255 on resting screens, and motion ended at the same times. The 40 screens, 11 films and 6 timings shot on v0.9.1 and on v0.9.2 were all identical.
 - Windows and Linux were only compiled, not run.
 - Enter with a real Korean input method (the release notes and source say v0.8.3 fixed it), the feel of a real mouse, web windows, `Timeline` and `Draggable` are written from source and docs only.
 

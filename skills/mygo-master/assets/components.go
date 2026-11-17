@@ -1,15 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/chart"
-)
-
-const (
-	tipPadding  = 8
-	tipFontSize = 12.5
 )
 
 func card(c *ui.Context, p *palette) ui.Element {
@@ -210,22 +206,69 @@ func labelWeight(selected bool) int {
 	return 500
 }
 
-func pickPoint(c *ui.Context, area ui.Element, xs []float32, describe func(int) string) int {
-	selected := ui.Local(area, "selected", func() int { return -1 })
-	chart.Select(c, area, selected, xs, describe)
-	if !area.Hovered() && !area.Focused() {
-		*selected = -1
-	}
-	return *selected
+type metricView struct {
+	label    string
+	icon     *ui.SVG
+	value    string
+	against  string
+	delta    float64
+	up       *ui.SVG
+	down     *ui.SVG
+	trend    []float64
+	describe func(i int) string
 }
 
-func chartTip(c *ui.Context, p *palette, width, x, y float32, text string) {
-	textWidth, _ := c.MeasureText(0, ui.Span{Text: text, Size: tipFontSize})
-	reach := (tipPadding + textWidth/2) / width
-	chart.Anchor(c.Key("tip"), min(max(x, reach), 1-reach), y, ui.Center, ui.End, func() {
-		ui.Row(c).Height(26).PaddingX(tipPadding).Margin(0, 0, 8, 0).Radius(5).Background(p.ink).Shadow(0, 2, 8, 0, ui.RGBA(0, 0, 0, 0.2)).
-			Role(ui.RoleTooltip).ClipY().Transition(tipFit).Children(func() {
-			ui.Text(c, text).FontSize(tipFontSize).TextColor(p.pageTop).NoWrap().ContentTransition(tipDigits)
+func metricCard(c *ui.Context, p *palette, m metricView) ui.Element {
+	return card(c, p).Height(140).Padding(17, 14, 0, 22).Children(func() {
+		ui.Row(c).Gap(18).Children(func() {
+			ui.Icon(c, m.icon).Size(24, 24).TextColor(p.body)
+			ui.Text(c, m.label).FontSize(14.5).FontWeight(500).TextColor(p.body).NoWrap()
 		})
-	}).IgnoreInput(true).Transition(markMotion)
+		ui.Box(c).ClipY().Margin(9, 0, 0, 0).Children(func() {
+			ui.Text(c, m.value).FontSize(29.5).Bold().NoWrap().ContentTransition(rollDigits)
+		})
+		ui.Row(c).Gap(7).Margin(11, 0, 0, 0).Children(func() {
+			deltaPill(c, p, m.delta, m.up, m.down)
+			ui.Text(c, m.against).FontSize(12.5).TextColor(p.muted).NoWrap().Transition(followFit)
+		})
+		sparkline(c, p, m.trend, m.describe).Label(m.label+" trend").Absolute().Top(53).Right(14).Size(85, 45)
+	})
+}
+
+func deltaPill(c *ui.Context, p *palette, delta float64, up, down *ui.SVG) {
+	icon, sign := up, "+"
+	if delta < 0 {
+		icon, sign = down, "−"
+	}
+	pill := ui.Row(c).Height(24).Padding(0, 9, 0, 7).Gap(4).Radius(12).ClipY().Transition(growFit)
+	falling := progress(pill, "falling", delta < 0, fadeMotion)
+	ink := p.good.ink.Mix(p.bad.ink, falling)
+	pill.Background(p.good.background.Mix(p.bad.background, falling)).Children(func() {
+		ui.Icon(c, icon).Size(14, 14).TextColor(ink).ContentTransition(ui.ContentTransition{})
+		ui.Text(c, fmt.Sprintf("%s%.1f%%", sign, math.Abs(delta))).FontSize(12.5).FontWeight(600).TextColor(ink).NoWrap().ContentTransition(rollDigits)
+	})
+}
+
+func moreButton(c *ui.Context, p *palette, label string, icon *ui.SVG) ui.Element {
+	button := pressable(ui.ButtonBase(c), 0.96).Label(label).Height(30).Padding(0, 14).Gap(5).Radius(8).Border(1, p.fieldLine)
+	var nudge ui.Pose
+	if button.Hovered() {
+		nudge.X = 3
+	}
+	return button.Background(p.field.Mix(p.navActive, progress(button, "hover", button.Hovered(), fadeMotion))).Children(func() {
+		ui.Text(c, label).FontSize(14).FontWeight(600).TextColor(p.accentInk)
+		ui.Icon(c, icon).Size(15, 15).TextColor(p.accentInk).AnimatePose(nudge, quickMotion)
+	})
+}
+
+func textLink(c *ui.Context, p *palette, text string) ui.Element {
+	link := pressable(ui.ButtonBase(c), 0.97).Label(text).FillHeight().Radius(4).Cursor(ui.CursorPointer)
+	line := progress(link, "line", link.Hovered(), quickMotion)
+	return link.Children(func() {
+		ui.Box(c).Draw(func(pt *ui.Painter, r ui.Rect) {
+			pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W * line, H: 1}, p.accentInk, 0)
+		}).Children(func() {
+			ui.Text(c, text).FontSize(14.5).TextColor(p.accentInk)
+		})
+	})
 }

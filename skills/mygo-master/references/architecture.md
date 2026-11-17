@@ -29,7 +29,7 @@ main.go ──> internal/view ─────┐
 | 도메인 | `internal/domain` | 엔티티, 값 객체, 업무 규칙 | 표준 라이브러리 |
 | 유스케이스 | `internal/usecase` | 앱이 하는 일, 필요한 포트 | `domain` |
 | 어댑터 | `internal/adapter` | 포트 구현: 파일, DB, HTTP, 시스템 기능 | `domain`, `usecase`, `github.com/egoist/mygo` 전체 |
-| 뷰 | `internal/view` | 화면 상태, 뷰 함수, 팔레트, 모션, 아이콘 | `domain`, `usecase`, `github.com/egoist/mygo/ui` 와 그 하위 패키지 |
+| 뷰 | `internal/view` | 화면 상태, 뷰 함수, 팔레트, 모션, 아이콘 | `domain`, `usecase`, `github.com/egoist/mygo/ui` 와 그 하위 패키지, `github.com/egoist/mygo/i18n` |
 | 조립 | `main.go` | 객체 조립, 창 옵션, `App.Run` | 전부 |
 
 뷰 패키지 이름을 `ui` 로 하면 `github.com/egoist/mygo/ui` 와 헷갈리므로 `view` 로 한다. `main.go` 는 `mygo build` 의 기본 위치인 프로젝트 맨 위에 둔다.
@@ -56,9 +56,9 @@ main.go ──> internal/view ─────┐
 - **표시 변환은 뷰에서 한다.** 유스케이스는 값과 오류를 돌려주고, 글자로 바꾸는 일은 뷰가 한다.
 - **화면 상태와 앱 상태를 나눈다.** 껐다 켜도 남아야 하면 앱 상태이고 유스케이스를 거친다. 그 밖에는 뷰 구조체에 둔다.
 - **뷰 안에서 부르는 유스케이스는 빠른 조회만 한다.** 뷰는 프레임마다 돈다. 변경은 `Clicked`, `OnClick`, `OnChange` 같은 처리된 동작에서 부른다.
-- **파일은 크기대로 나눈다.** 뷰 패키지 안을 `shell.go`, `pages.go`, `components.go`, `palette.go`, `motion.go`, `icons.go` 처럼 나눈다. 패키지를 더 쪼개는 것은 화면끼리 정말 독립적일 때만 한다.
+- **파일은 크기대로 나눈다.** 뷰 패키지 안을 `shell.go`, `pages.go`, `components.go`, `charts.go`, `frame.go`, `palette.go`, `motion.go`, `icons.go` 처럼 나눈다. 패키지를 더 쪼개는 것은 화면끼리 정말 독립적일 때만 한다.
 
-뷰와 조립은 시작 템플릿에 이미 이 형태로 있다. `assets/starter/` 의 `main.go`, `internal/view/app.go`, `internal/usecase/tasks.go`, `internal/adapter/filestore.go` 를 먼저 읽는다. `internal/view/motion.go`, `palette.go`, `palette_test.go`, `targets_test.go` 는 `new_app.py` 가 `assets/` 에서 만들고, `--kit dashboard` 를 붙이면 부품 `components.go` 와 그 테스트도 만든다([design.md](design.md#코드로-가져다-쓰기)). 할 일 도메인은 예시이므로 실제 도메인으로 바꾸고 남기지 않는다.
+뷰와 조립은 시작 템플릿에 이미 이 형태로 있다. `assets/starter/` 의 `main.go`, `internal/view/app.go`, `internal/usecase/tasks.go`, `internal/adapter/filestore.go` 를 먼저 읽는다. `internal/view/motion.go`, `palette.go`, `palette_test.go`, `targets_test.go` 는 `new_app.py` 가 `assets/` 에서 만들고, `--kit dashboard` 를 붙이면 부품(`components.go`, `charts.go`, `frame.go`, `formats.go`, `icons.go` 와 `icons/`)과 그 테스트도 만들고, 프로젝트 맨 위에 창 옵션 `window.go` 를 둔다([design.md](design.md#코드로-가져다-쓰기)). 할 일 도메인은 예시이므로 실제 도메인으로 바꾸고 남기지 않는다.
 
 웹 창을 쓰는 앱도 같다. `mygo.Bind` 로 넘기는 서비스는 바깥층이고 유스케이스를 부른다. 이 줄은 문서 기준이다.
 

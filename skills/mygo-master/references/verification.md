@@ -142,8 +142,8 @@ func TestSideNavJumpsWithLessMotion(t *testing.T) {
 
 ```json
 [
-  {"file": "components.go", "old": "}).IgnoreInput(true).Transition(markMotion)", "new": "}).Transition(markMotion)", "test": "TestChartTipLetsThePointerThrough"},
-  {"file": "components.go", "old": "min(max(x, reach), 1-reach)", "new": "min(x, 1-reach)", "test": "TestChartTipStaysInsideItsChart"}
+  {"file": "charts.go", "old": "}).IgnoreInput(true).Transition(markMotion)", "new": "}).Transition(markMotion)", "test": "TestChartTipLetsThePointerThrough"},
+  {"file": "charts.go", "old": "min(max(x, reach), 1-reach)", "new": "min(x, 1-reach)", "test": "TestChartTipStaysInsideItsChart"}
 ]
 ```
 
@@ -313,7 +313,7 @@ open build/darwin-arm64/Dashboard.app
 | 겹침 | 포인터가 요소 아래로 들어옴, 지운 뒤 다음 요소가 포인터 아래로 옴, 메뉴에 가려짐, 말풍선이 카드 밖으로 나감, 이웃 글자 가림 |
 | 데이터 | 첫 값, 마지막 값, 가장 긴 글자, 끊을 곳 없는 글자, 빈 데이터, 큰 수, 끝까지 스크롤한 상태에서 삭제, 깨진 저장 파일 |
 | 입력 | 포인터, 키보드, 포커스를 가진 요소가 사라질 때, 보조 기술 역할과 이름, 누를 곳 28×28 이상 |
-| 한글 | 입력칸이 있으면 `tt.Compose` 로 조합 상태를 확인한다. 조합 중 Enter는 Tester로 증명되지 않는다. v0.9.1의 Tester는 조합 중인 키를 막고, 실제 macOS 두벌식은 v0.8.3부터 첫 Enter에 제출한다. Enter로 제출하는 칸은 실제 입력기로 확인하거나, 못 했다고 적는다 |
+| 한글 | 입력칸이 있으면 `tt.Compose` 로 조합 상태를 확인한다. 조합 중 Enter는 Tester로 증명되지 않는다. v0.9.2의 Tester는 조합 중인 키를 막고, 실제 macOS 두벌식은 v0.8.3부터 첫 Enter에 제출한다. Enter로 제출하는 칸은 실제 입력기로 확인하거나, 못 했다고 적는다 |
 
 ## 보고
 
