@@ -45,8 +45,9 @@ func sparkline(c *ui.Context, p *palette, values []float64, describe func(i int)
 	lo, hi := chart.Extent(values...)
 	scale := chart.NewLinear(lo, hi)
 	xs, ys := make([]float32, len(values)), make([]float32, len(values))
+	span := float32(max(len(values)-1, 1))
 	for i, v := range values {
-		xs[i] = float32(i) / float32(len(values)-1)
+		xs[i] = float32(i) / span
 		ys[i] = 0.2 + 0.75*scale.At(v)
 	}
 	spark := ui.Box(c).Radius(6)
@@ -64,10 +65,17 @@ func sparkline(c *ui.Context, p *palette, values []float64, describe func(i int)
 }
 
 func areaChart(c *ui.Context, p *palette, v areaChartView) ui.Element {
-	scale := chart.NewLinear(0, v.ceiling)
-	left := make([]chart.Tick, int(v.ceiling/v.step)+1)
+	ceiling, step := v.ceiling, v.step
+	if ceiling <= 0 {
+		ceiling = 1
+	}
+	if step <= 0 {
+		step = ceiling
+	}
+	scale := chart.NewLinear(0, ceiling)
+	left := make([]chart.Tick, int(ceiling/step)+1)
 	for i := range left {
-		value := v.step * float64(i)
+		value := step * float64(i)
 		left[i] = chart.Tick{At: scale.At(value), Value: value, Label: v.axisLabel(value)}
 	}
 	xs, ys := make([]float32, len(v.values)), make([]float32, len(v.values))

@@ -32,13 +32,13 @@ func table(c *ui.Context, p *palette, label, empty string, columns []column, row
 	ui.Column(c).Label(label).Role(ui.RoleTable).Children(func() {
 		ui.Row(c).Height(37).Padding(0, 12, 3, 12).Radius(6).Background(p.head).Role(ui.RoleRow).Children(func() {
 			for _, col := range columns {
-				ui.Text(c, col.title).FontSize(14.5).FontWeight(500).TextColor(p.body).Grow(col.weight).Basis(0).Role(ui.RoleColumnHeader)
+				ui.Text(c, col.title).FontSize(14.5).FontWeight(500).TextColor(p.body).Grow(col.weight).Basis(0).MinWidth(0).SingleLine().Role(ui.RoleColumnHeader)
 			}
 		})
 		for row := range rows {
 			ui.Row(c).Height(38).PaddingX(12).BorderWidth(0, 0, 1, 0).BorderColor(p.line).Role(ui.RoleRow).Children(func() {
 				for i, col := range columns {
-					ui.Row(c).Grow(col.weight).Basis(0).FillHeight().Role(ui.RoleCell).Children(func() {
+					ui.Row(c).Grow(col.weight).Basis(0).MinWidth(0).FillHeight().Role(ui.RoleCell).Children(func() {
 						cell(row, i)
 					})
 				}
@@ -51,7 +51,7 @@ func table(c *ui.Context, p *palette, label, empty string, columns []column, row
 }
 
 func cellText(c *ui.Context, text string) {
-	ui.Text(c, text).FontSize(14.5).NoWrap()
+	ui.Text(c, text).FontSize(14.5).Margin(0, 12, 0, 0).SingleLine()
 }
 
 type menuEntry struct {
@@ -77,6 +77,10 @@ func chevron(c *ui.Context, p *palette, icon *ui.SVG, open bool) ui.Element {
 }
 
 func dropdown(c *ui.Context, p *palette, anchor ui.Element, open *bool, upward bool, entries []menuEntry) {
+	if len(entries) == 0 {
+		*open = false
+		return
+	}
 	lift, origin := float32(-4), float32(0)
 	if upward {
 		lift, origin = 4, 1
@@ -236,6 +240,9 @@ func metricCard(c *ui.Context, p *palette, m metricView) ui.Element {
 }
 
 func deltaPill(c *ui.Context, p *palette, delta float64, up, down *ui.SVG) {
+	if math.IsNaN(delta) || math.IsInf(delta, 0) {
+		delta = 0
+	}
 	icon, sign := up, "+"
 	if delta < 0 {
 		icon, sign = down, "−"
@@ -262,13 +269,13 @@ func moreButton(c *ui.Context, p *palette, label string, icon *ui.SVG) ui.Elemen
 }
 
 func textLink(c *ui.Context, p *palette, text string) ui.Element {
-	link := pressable(ui.ButtonBase(c), 0.97).Label(text).FillHeight().Radius(4).Cursor(ui.CursorPointer)
+	link := pressable(ui.ButtonBase(c), 0.97).Label(text).FillHeight().MinWidth(0).Shrink(1).Margin(0, 12, 0, 0).Radius(4).Cursor(ui.CursorPointer)
 	line := progress(link, "line", link.Hovered(), quickMotion)
 	return link.Children(func() {
-		ui.Box(c).Draw(func(pt *ui.Painter, r ui.Rect) {
+		ui.Box(c).MinWidth(0).Shrink(1).Draw(func(pt *ui.Painter, r ui.Rect) {
 			pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 1, W: r.W * line, H: 1}, p.accentInk, 0)
 		}).Children(func() {
-			ui.Text(c, text).FontSize(14.5).TextColor(p.accentInk)
+			ui.Text(c, text).FontSize(14.5).TextColor(p.accentInk).SingleLine()
 		})
 	})
 }

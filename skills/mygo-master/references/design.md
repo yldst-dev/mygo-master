@@ -304,6 +304,7 @@ python3 $SKILL/scripts/new_app.py my-app --name "My App" --kit dashboard
 | `labelWeight(selected)` | 선택되면 500에서 600으로 |
 
 - 새 앱은 `scripts/new_app.py` 가 파일을 `internal/view/` 로 복사한다. 패키지 이름만 `view` 로 바뀌고, `window.go` 와 그 테스트만 `main` 패키지 그대로 프로젝트 맨 위로 간다. 복사한 뒤에는 그 앱의 파일이니 색과 부품을 마음대로 고친다. 쓰지 않는 부품과 모션 값 줄은 지우고, 지운 부품의 테스트도 함께 지운다.
+- 부품은 값이 바뀌고 비는 앱에서도 깨지지 않는다. 항목이 0개인 메뉴(`dropdown` 은 열리지 않고 닫힌 채로 둔다), 값이 하나뿐이거나 모두 같거나 모두 0인 그래프와 도넛, 지난달이 0이라 증감이 NaN이나 Inf인 배지(`deltaPill` 은 0으로 본다)가 그렇다. 사용자가 입력하는 긴 글자는 표 칸과 도넛 범례에서 한 줄로 끝나고 말줄임표가 붙는다. 시험은 `charts_test.go` 와 `components_test.go` 에 있다.
 - 부품을 쓰는 방법은 `frame_test.go` 의 `TestAScreenBuiltFromPartsOnly` 가 보여 준다. 사이드바, 상단 막대, 지표 카드, 그래프, 도넛, 표를 부품만으로 한 화면에 조립하고 누르고 입력해 본다. 대시보드의 `shell.go` 와 `pages.go` 는 같은 부품을 부르며 앱 상태를 잇는 층이다.
 - 아이콘은 `icons/` 폴더(ISC 라이선스 파일 포함)와 `icons.go` 가 함께 간다. 라이선스 파일을 지우지 않는다(`TestIconsParseAndTheirLicenseTravelsWithThem` 가 지킨다). 쓰지 않는 아이콘은 파일과 변수를 함께 지운다.
 - `window.go` 는 `main.go` 에서 `mygo.NewWindow(dashboardWindow("My App", screen))` 로 쓴다. 숨긴 타이틀바는 `sidebar` 와 `topbar` 가 창 버튼 자리를 비우는 것과 짝이다. 일반 타이틀바 창을 쓸 앱은 이 파일을 쓰지 않아도 된다.

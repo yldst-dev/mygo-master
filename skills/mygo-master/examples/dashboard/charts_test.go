@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -322,6 +323,66 @@ func TestDonutLegendKeepsALongNameOnOneLine(t *testing.T) {
 			if !kitSame(kitPixel(tt, x, y), background) {
 				t.Fatalf("a second line of the long name shows at the top of its row, at %v,%v", x, y)
 			}
+		}
+	}
+}
+
+func noBrokenNumbers(t *testing.T, tt *ui.Tester) {
+	t.Helper()
+	for _, text := range tt.Texts() {
+		if strings.Contains(text, "NaN") || strings.Contains(text, "Inf") {
+			t.Errorf("a broken number on screen: %q", text)
+		}
+	}
+}
+
+func TestLineChartsSurviveEmptyFlatAndSingleData(t *testing.T) {
+	for _, values := range [][]float64{nil, {5}, {3, 3, 3}, {0, 0, 0, 0}} {
+		names := make([]string, len(values))
+		for i := range names {
+			names[i] = fmt.Sprintf("n%d", i)
+		}
+		tt := kitScreen(640, 400, func(c *ui.Context, p *palette) {
+			sparkline(c, p, values, spikeName).Label("Trend").Size(160, 60)
+			areaChart(c, p, areaChartView{
+				label: "Area", names: names, values: values, axisLabel: axisDollars, describe: spikeName,
+			}).Height(200)
+		})
+		for _, label := range []string{"Trend", "Area"} {
+			kitHover(t, tt, label, 0.5, 0.5)
+			tt.Advance(time.Second)
+			kitHover(t, tt, label, 0.99, 0.5)
+			tt.Advance(time.Second)
+		}
+		tt.Move(630, 390)
+		tt.Advance(time.Second)
+		noBrokenNumbers(t, tt)
+		if tt.FramePending() {
+			t.Errorf("%v: the charts keep asking for frames", values)
+		}
+	}
+}
+
+func TestDonutSurvivesEmptyAndZeroShares(t *testing.T) {
+	for _, shares := range [][]float64{nil, {0, 0, 0}, {100}} {
+		names := make([]string, len(shares))
+		for i := range names {
+			names[i] = fmt.Sprintf("Part %d", i)
+		}
+		tt := kitScreen(520, 300, func(c *ui.Context, p *palette) {
+			donut(c, p, donutView{
+				label: "Split", names: names, shares: shares, center: "0", caption: "Total",
+				describe: func(i int) string { return names[i] },
+			})
+		})
+		r, _ := tt.Find("Split")
+		tt.Move(r.X+r.W/2+70, r.Y+r.H/2)
+		tt.Advance(time.Second)
+		tt.Move(r.X+r.W/2, r.Y+r.H/2)
+		tt.Advance(time.Second)
+		noBrokenNumbers(t, tt)
+		if tt.FramePending() {
+			t.Errorf("%v: the donut keeps asking for frames", shares)
 		}
 	}
 }

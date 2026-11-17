@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -244,5 +245,70 @@ func TestChevronTurnsOverWhenTheMenuIsOpen(t *testing.T) {
 	tt.Advance(time.Second)
 	if bytes.Equal(closed, kitCrop(tt, shape)) || tt.FramePending() {
 		t.Errorf("the chevron does not turn: pending %v", tt.FramePending())
+	}
+}
+
+func TestDeltaPillShowsNoBrokenNumberWhenThereWasNothingBefore(t *testing.T) {
+	for _, delta := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+		tt := kitTester(func(c *ui.Context, p *palette) {
+			deltaPill(c, p, delta, arrowUpIcon, arrowDownIcon)
+		})
+		noBrokenNumbers(t, tt)
+		if !tt.HasText("+0.0%") {
+			t.Errorf("delta %v shows %q", delta, tt.Texts())
+		}
+	}
+}
+
+func TestDropdownWithNoEntriesOpensNothingAndStaysClosed(t *testing.T) {
+	open := false
+	tt := kitTester(func(c *ui.Context, p *palette) {
+		button := menuButton(c, p, "Alerts", &open).Height(40).Padding(0, 12)
+		button.Children(func() { ui.Text(c, "Alerts") })
+		dropdown(c, p, button, &open, false, nil)
+	})
+	if err := tt.Click("Alerts"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Advance(time.Second)
+	if open || tt.FramePending() {
+		t.Errorf("an empty menu stays open: open %v, pending %v", open, tt.FramePending())
+	}
+}
+
+func TestATableKeepsAnOverlongCellInsideItsColumn(t *testing.T) {
+	long := "Priya Venkataraghavan-Subramaniam Nair the Third of Northwind Laboratories Limited"
+	tt := kitScreen(640, 300, func(c *ui.Context, p *palette) {
+		table(c, p, "People", "Nobody.", []column{{"Name", 1}, {"Place", 1}}, 2, func(row, col int) {
+			switch {
+			case col == 1:
+			case row == 0:
+				cellText(c, long)
+			default:
+				textLink(c, p, long+" link")
+			}
+		})
+	})
+	place, ok := tt.Find("Place")
+	if !ok {
+		t.Fatalf("no second column in %q", tt.Texts())
+	}
+	background := kitPixel(tt, 6, 6)
+	for row, text := range []string{long, long + " link"} {
+		cell, ok := tt.Find(text)
+		if !ok {
+			t.Fatalf("no cell text in %q", tt.Texts())
+		}
+		y := cell.Y + cell.H/2
+		for x := place.X; x < place.X+80; x++ {
+			for dy := float32(-6); dy <= 6; dy++ {
+				if !kitSame(kitPixel(tt, x, y+dy), background) {
+					t.Fatalf("row %d: the first column paints over the second at %v,%v", row, x, y+dy)
+				}
+			}
+		}
+	}
+	if tt.FramePending() {
+		t.Error("the table keeps asking for frames")
 	}
 }
